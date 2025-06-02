@@ -285,7 +285,7 @@ SimpleHlsNotifier::SimpleHlsNotifier(const HlsParams& hls_params)
   master_playlist_.reset(new MasterPlaylist(
       master_playlist_path.filename(), default_audio_langauge,
       default_text_language, hls_params.is_independent_segments,
-      hls_params.create_session_keys));
+      hls_params.create_session_keys, hls_params.detect_cea));
 }
 
 SimpleHlsNotifier::~SimpleHlsNotifier() {}

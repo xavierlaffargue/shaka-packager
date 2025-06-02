@@ -177,6 +177,7 @@ bool EsParserH264::UpdateVideoDecoderConfig(int pps_id) {
       coded_height, pixel_width, pixel_height, sps->color_primaries,
       sps->matrix_coefficients, sps->transfer_characteristics, 0,
       nalu_length_size, std::string(), false);
+  last_video_decoder_config_->cea608_caption_info = h264_parser_->GetCea608Info();
   DVLOG(1) << "Profile IDC: " << sps->profile_idc;
   DVLOG(1) << "Level IDC: " << sps->level_idc;
   DVLOG(1) << "log2_max_frame_num_minus4: " << sps->log2_max_frame_num_minus4;

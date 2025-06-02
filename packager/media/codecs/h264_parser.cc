@@ -1123,42 +1123,193 @@ H264Parser::Result H264Parser::ParseSEI(const Nalu& nalu,
                                         H264SEIMessage* sei_msg) {
   int byte;
   H26xBitReader reader;
+
+  // Initialize sei_msg. The union members like user_data_unregistered.data
+  // (std::vector) will be default constructed (empty).
+  *sei_msg = {};
+
   reader.Initialize(nalu.data() + nalu.header_size(), nalu.payload_size());
   H26xBitReader* br = &reader;
 
-  *sei_msg = {};
+  // Each SEI message starts with type bytes followed by size bytes.
+  // Check if there are enough bits for at least one type byte and one size byte.
+  if (br->NumBitsLeft() < 16) {
+    DVLOG(2) << "Not enough data for SEI message type/size. Bits left: " << br->NumBitsLeft();
+    // If there's any data left but not enough for a full header, it's an error.
+    // If no data left, it's a clean end.
+    return br->HasMoreRBSPData() ? kInvalidStream : kOk;
+  }
 
+  // Calculate SEI message type
   READ_BITS_OR_RETURN(8, &byte);
   while (byte == 0xff) {
     sei_msg->type += 255;
+    if (br->NumBitsLeft() < 8) return kInvalidStream; // Not enough data for next byte
     READ_BITS_OR_RETURN(8, &byte);
   }
   sei_msg->type += byte;
 
+  // Calculate SEI message payload size
+  if (br->NumBitsLeft() < 8) return kInvalidStream; // Not enough data for first size byte
   READ_BITS_OR_RETURN(8, &byte);
   while (byte == 0xff) {
     sei_msg->payload_size += 255;
+    if (br->NumBitsLeft() < 8) return kInvalidStream; // Not enough data for next byte
     READ_BITS_OR_RETURN(8, &byte);
   }
   sei_msg->payload_size += byte;
 
   DVLOG(4) << "Found SEI message type: " << sei_msg->type
            << " payload size: " << sei_msg->payload_size;
+  
+  // Check if the declared payload_size exceeds available bits in the bitstream.
+  if (static_cast<size_t>(sei_msg->payload_size) * 8 > br->NumBitsLeft()) {
+    DVLOG(1) << "SEI payload size " << sei_msg->payload_size 
+             << " bytes (" << sei_msg->payload_size * 8 << " bits) exceeds remaining bitstream data " 
+             << br->NumBitsLeft() << " bits.";
+    // It's an error, no need to skip, just return. The bit reader is already at its end or near.
+    return kInvalidStream;
+  }
+
+  size_t initial_bits_left_for_payload = br->NumBitsLeft();
 
   switch (sei_msg->type) {
     case H264SEIMessage::kSEIRecoveryPoint:
+      // Minimum payload for recovery point:
+      // recovery_frame_cnt (ue(v)) - typically 1 byte for small values
+      // exact_match_flag (1 bit)
+      // broken_link_flag (1 bit)
+      // changing_slice_group_idc (2 bits)
+      // Total ~10 bits. If payload_size is 0, it's invalid.
+      if (sei_msg->payload_size == 0) {
+          DVLOG(1) << "SEI recovery point payload is empty, which is invalid.";
+          return kInvalidStream; 
+      }
       READ_UE_OR_RETURN(&sei_msg->recovery_point.recovery_frame_cnt);
       READ_BOOL_OR_RETURN(&sei_msg->recovery_point.exact_match_flag);
       READ_BOOL_OR_RETURN(&sei_msg->recovery_point.broken_link_flag);
       READ_BITS_OR_RETURN(2, &sei_msg->recovery_point.changing_slice_group_idc);
       break;
 
+    case H264SEIMessage::kSEIUserDataUnregistered: {
+      if (sei_msg->payload_size < 16) {
+        DVLOG(1) << "User data unregistered SEI payload (" << sei_msg->payload_size 
+                 << " bytes) too small for 16-byte UUID. Skipping payload.";
+        // Skipping is handled by the consumption check at the end of the function.
+        break; 
+      }
+      for (int i = 0; i < 16; ++i) {
+        // Ensure there are enough bits for each byte of the UUID
+        if (br->NumBitsLeft() < 8) return kInvalidStream;
+        READ_BITS_OR_RETURN(8, &sei_msg->user_data_unregistered.uuid[i]);
+      }
+
+      int user_data_bytes_to_read = sei_msg->payload_size - 16;
+      if (user_data_bytes_to_read > 0) {
+        sei_msg->user_data_unregistered.data.resize(user_data_bytes_to_read);
+        for (int i = 0; i < user_data_bytes_to_read; ++i) {
+          if (br->NumBitsLeft() < 8) return kInvalidStream; // Check before reading each byte
+          READ_BITS_OR_RETURN(8, &sei_msg->user_data_unregistered.data[i]);
+        }
+      }
+      // If user_data_bytes_to_read is 0, data vector remains empty.
+
+      // CEA-608 detection logic (ITU-T T.35 / SCTE 128-1)
+      // Minimum user_data size for CEA-608:
+      // country_code(1)+provider_code(2)+user_identifier(4)+user_data_type_code(1) = 8 bytes
+      // Then, for cc_data: at least one 3-byte unit (cc_info, cc_data1, cc_data2).
+      // So, 8 + 3 = 11 bytes for the user_data part of the payload.
+      if (sei_msg->user_data_unregistered.data.size() >= 11) {
+        const std::vector<uint8_t>& user_data = sei_msg->user_data_unregistered.data;
+        uint8_t country_code = user_data[0];
+        // Provider code is 2 bytes, big-endian.
+        uint16_t provider_code = (static_cast<uint16_t>(user_data[1]) << 8) | user_data[2];
+        // user_identifier "GA94" (4 bytes)
+        bool id_match = (user_data[3] == 'G' && user_data[4] == 'A' &&
+                         user_data[5] == '9' && user_data[6] == '4');
+        uint8_t user_data_type_code = user_data[7];
+
+        if (country_code == 0xB5 && provider_code == 0x0031 &&
+            id_match && user_data_type_code == 0x03) {
+          // This is ATSC1_data, which can contain CEA-608 captions.
+          // cc_data starts from user_data[8]. Each unit is 3 bytes.
+          for (size_t k = 8; (k + 3) <= user_data.size(); k += 3) {
+            uint8_t cc_info_byte = user_data[k]; // "first byte of the cc_data"
+            // uint8_t cc_data_1 = user_data[k+1]; // Not used for detection by task spec
+            // uint8_t cc_data_2 = user_data[k+2]; // Not used for detection by task spec
+
+            // Standard CEA-608 SCTE 128-1 checks (optional but good for robustness):
+            // bool process_cc_data_flag = (cc_info_byte >> 4) & 0x01;
+            // bool zero_bit = (cc_info_byte >> 3) & 0x01;
+            // bool reserved_bits_ok = ((cc_info_byte >> 5) == 0x07);
+            // if (!process_cc_data_flag || zero_bit || !reserved_bits_ok) continue;
+
+            bool cc_valid = (cc_info_byte >> 2) & 0x01;
+            if (cc_valid) {
+              // Apply task's specific interpretation for CC type detection from cc_info_byte:
+              // Task: "Bit 2 (0x04) indicates field 1 (CC1, CC3) or field 2 (CC2, CC4)."
+              //       This refers to bit index 2 of cc_info_byte (mask 0x04).
+              //       If this bit is 0, it's for (CC1,CC3). If 1, for (CC2,CC4)
+              bool task_field_is_field1_type = ((cc_info_byte & 0x04) == 0);
+
+              // Task: "Bit 0-1 (0x03) indicates channel 1 (CC1, CC2) or channel 2 (CC3, CC4)."
+              //       This refers to bits 0 and 1 of cc_info_byte (mask 0x03).
+              uint8_t task_channel_pair_bits = cc_info_byte & 0x03;
+
+              if (task_channel_pair_bits == 0x00) { // Task: CC1 / CC2
+                if (task_field_is_field1_type) { // Task: Field 1 type -> CC1
+                  cea608_caption_info_.has_cc1 = true;
+                } else { // Task: Field 2 type -> CC2
+                  cea608_caption_info_.has_cc2 = true;
+                }
+              } else if (task_channel_pair_bits == 0x01) { // Task: CC3 / CC4
+                if (task_field_is_field1_type) { // Task: Field 1 type -> CC3
+                  cea608_caption_info_.has_cc3 = true;
+                } else { // Task: Field 2 type -> CC4
+                  cea608_caption_info_.has_cc4 = true;
+                }
+              }
+            }
+          }
+        }
+      }
+      break;
+    }
     default:
-      DVLOG(4) << "Unsupported SEI message";
+      DVLOG(4) << "Unsupported SEI message type: " << sei_msg->type
+               << ". Payload of " << sei_msg->payload_size << " bytes will be skipped.";
+      // Actual skipping is handled by the consumption check at the end.
       break;
   }
+  
+  // Ensure all bytes of the current SEI message payload are consumed or skipped.
+  // This is crucial for correctly parsing subsequent SEI messages if they exist in the same NALU.
+  size_t bits_parsed_for_payload = initial_bits_left_for_payload - br->NumBitsLeft();
+  
+  if (bits_parsed_for_payload < static_cast<size_t>(sei_msg->payload_size * 8)) {
+    size_t remaining_bits_in_payload = (sei_msg->payload_size * 8) - bits_parsed_for_payload;
+    DVLOG(2) << "SEI message type " << sei_msg->type 
+             << " parser did not consume full payload. Parsed bits: " << bits_parsed_for_payload
+             << ", Expected payload bits: " << sei_msg->payload_size * 8
+             << ". Skipping remaining " << remaining_bits_in_payload << " bits of this payload.";
+    if (!br->SkipBits(remaining_bits_in_payload)) {
+        DVLOG(1) << "Error skipping remaining SEI payload bits: unexpected EOS.";
+        return kInvalidStream;
+    }
+  } else if (bits_parsed_for_payload > static_cast<size_t>(sei_msg->payload_size * 8)) {
+    // This indicates the parser read beyond the stated payload_size.
+    DVLOG(1) << "SEI message type " << sei_msg->type << " parser read beyond stated payload size. "
+             << "Stated payload bits: " << sei_msg->payload_size * 8 
+             << ", Parsed by parser: " << bits_parsed_for_payload;
+    return kInvalidStream; // Critical error, parsing is out of sync.
+  }
+  // If payload_size * 8 == bits_parsed_for_payload, everything is fine.
 
   return kOk;
+}
+
+const CEA608CaptionInfo& H264Parser::GetCea608Info() const {
+  return cea608_caption_info_;
 }
 
 }  // namespace media

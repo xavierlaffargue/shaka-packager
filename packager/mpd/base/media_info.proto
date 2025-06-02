@@ -55,6 +55,7 @@ message MediaInfo {
     // Fro Dolby Vision back compatiable content.
     optional string supplemental_codec = 13;
     optional uint32 compatible_brand = 14;
+    optional CEA608CaptionInfoPb cea608_caption_info = 15;
   }
 
   message AudioInfo {
@@ -229,4 +230,11 @@ message MediaInfo {
 
   // DASH only. Label element.
   optional string dash_label = 29;
+}
+
+message CEA608CaptionInfoPb {
+  optional bool has_cc1 = 1;
+  optional bool has_cc2 = 2;
+  optional bool has_cc3 = 3;
+  optional bool has_cc4 = 4;
 }

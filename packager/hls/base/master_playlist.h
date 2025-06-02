@@ -29,7 +29,8 @@ class MasterPlaylist {
                  const std::string& default_audio_language,
                  const std::string& default_text_language,
                  const bool is_independent_segments,
-                 const bool create_session_keys = false);
+                 const bool create_session_keys = false,
+                 const bool detect_cea = false);
   virtual ~MasterPlaylist();
 
   /// Writes Master Playlist to output_dir + <name of playlist>.
@@ -55,6 +56,7 @@ class MasterPlaylist {
   const std::string default_text_language_;
   bool is_independent_segments_;
   bool create_session_keys_;
+  bool detect_cea_;
 };
 
 }  // namespace hls

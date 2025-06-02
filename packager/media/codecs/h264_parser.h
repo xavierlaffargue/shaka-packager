@@ -11,8 +11,10 @@
 #include <cstdlib>
 #include <map>
 #include <memory>
+#include <vector>
 
 #include <packager/macros/classes.h>
+#include <packager/media/base/video_stream_info.h> // Added for CEA608CaptionInfo
 #include <packager/media/codecs/h26x_bit_reader.h>
 #include <packager/media/codecs/nalu_reader.h>
 
@@ -230,17 +232,22 @@ struct H264SEIRecoveryPoint {
   int changing_slice_group_idc;
 };
 
+struct H264SEIUserDataUnregistered {
+  uint8_t uuid[16];
+  std::vector<uint8_t> data;
+};
+
 struct H264SEIMessage {
   enum Type {
+    kSEIUserDataUnregistered = 5,
     kSEIRecoveryPoint = 6,
   };
 
   int type;
   int payload_size;
   union {
-    // Placeholder; in future more supported types will contribute to more
-    // union members here.
     H264SEIRecoveryPoint recovery_point;
+    H264SEIUserDataUnregistered user_data_unregistered;
   };
 };
 
@@ -289,6 +296,8 @@ class H264Parser {
   // by the caller.
   Result ParseSEI(const Nalu& nalu, H264SEIMessage* sei_msg);
 
+  const CEA608CaptionInfo& GetCea608Info() const;
+
  private:
   // Parse scaling lists (see spec).
   Result ParseScalingList(H26xBitReader* br,
@@ -333,6 +342,8 @@ class H264Parser {
   typedef std::map<int, std::unique_ptr<H264Pps>> PpsById;
   SpsById active_SPSes_;
   PpsById active_PPSes_;
+
+  CEA608CaptionInfo cea608_caption_info_;
 
   DISALLOW_COPY_AND_ASSIGN(H264Parser);
 };

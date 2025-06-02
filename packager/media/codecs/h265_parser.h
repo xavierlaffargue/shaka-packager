@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <packager/macros/classes.h>
+#include <packager/media/base/video_stream_info.h> // Added for CEA608CaptionInfo
 #include <packager/media/codecs/h26x_bit_reader.h>
 
 namespace shaka {
@@ -418,6 +419,21 @@ class H265Parser {
   /// @return a pointer to the VPS with the given ID, or NULL if none exists.
   const H265Vps* GetVps(int vps_id);
 
+  /// Parses SEI messages from the NAL unit.
+  /// H.265 SEI NAL units can contain multiple SEI messages. This function
+  /// should be called repeatedly on the same NALU if br->HasMoreRBSPData()
+  /// indicates more data after a successful parse.
+  /// For this subtask, we are primarily interested in User Data Unregistered
+  /// messages for CEA-608.
+  // Result ParseSEI(const Nalu& nalu, H26xBitReader* br, H265SEIMessage* sei_msg);
+  // TODO(SMPTE-334-2): The above signature is more aligned with H264Parser.
+  // For now, let's make a simplified ParseSEI that processes all messages in a NALU
+  // and updates internal caption info.
+  Result ParseSEIMessages(const Nalu& nalu);
+
+  /// @return a const reference to the detected CEA-608 caption info.
+  const CEA608CaptionInfo& GetCea608Info() const;
+
  private:
   Result ParseVuiParameters(int max_num_sub_layers_minus1,
                             H26xBitReader* br,
@@ -471,8 +487,34 @@ class H265Parser {
   SpsById active_spses_;
   PpsById active_ppses_;
 
+  CEA608CaptionInfo cea608_caption_info_;
+
   DISALLOW_COPY_AND_ASSIGN(H265Parser);
 };
+
+// Define SEI message structures for H.265.
+// These are simplified for the purpose of CEA-608 detection.
+struct H265SEIUserDataUnregistered {
+  uint8_t uuid[16];
+  std::vector<uint8_t> data;
+};
+
+struct H265SEIMessage {
+  enum Type {
+    kSEIUserDataUnregistered = 5,
+    // Other SEI types can be added here as needed.
+    // For example, kSEIRecoveryPoint = 6 (though its structure is different in H.265 from H.264)
+  };
+
+  Type type;
+  unsigned int payload_size; // HEVC spec uses unsigned int for payloadSize.
+  // Using a specific struct for the type we care about.
+  // A full implementation might use a union or std::variant if more types are handled.
+  H265SEIUserDataUnregistered user_data_unregistered;
+  // Other SEI message type structures would go here if a union was used.
+};
+
+// CEA608CaptionInfo is now defined in packager/media/base/video_stream_info.h
 
 }  // namespace media
 }  // namespace shaka

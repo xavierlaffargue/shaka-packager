@@ -105,6 +105,19 @@ void AddVideoInfo(const VideoStreamInfo* video_stream_info,
     video_info->set_matrix_coefficients(
         video_stream_info->matrix_coefficients());
   }
+
+  // Copy CEA-608 caption information.
+  if (video_stream_info->cea608_caption_info.has_cc1 ||
+      video_stream_info->cea608_caption_info.has_cc2 ||
+      video_stream_info->cea608_caption_info.has_cc3 ||
+      video_stream_info->cea608_caption_info.has_cc4) {
+    MediaInfo_CEA608CaptionInfoPb* cea608_pb =
+        video_info->mutable_cea608_caption_info();
+    cea608_pb->set_has_cc1(video_stream_info->cea608_caption_info.has_cc1);
+    cea608_pb->set_has_cc2(video_stream_info->cea608_caption_info.has_cc2);
+    cea608_pb->set_has_cc3(video_stream_info->cea608_caption_info.has_cc3);
+    cea608_pb->set_has_cc4(video_stream_info->cea608_caption_info.has_cc4);
+  }
 }
 
 void AddAudioInfo(const AudioStreamInfo* audio_stream_info,

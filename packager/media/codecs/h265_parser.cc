@@ -1751,5 +1751,129 @@ H265Parser::Result H265Parser::ByteAlignment(H26xBitReader* br) {
   return kOk;
 }
 
+const CEA608CaptionInfo& H265Parser::GetCea608Info() const {
+  return cea608_caption_info_;
+}
+
+H265Parser::Result H265Parser::ParseSEIMessages(const Nalu& nalu) {
+  // SEI NAL units can contain one or more SEI messages.
+  // Each SEI message is prefixed by payload type and payload size.
+  // See ISO/IEC 23008-2:2020, section 7.3.2.4.1 (General SEI message syntax)
+  // and Annex D (SEI messages).
+
+  H26xBitReader reader;
+  reader.Initialize(nalu.data() + nalu.header_size(), nalu.payload_size());
+  H26xBitReader* br = &reader;
+
+  do {
+    // ff_byte (shall be 0xFF)
+    unsigned int last_byte = 0xFF; 
+    unsigned int payload_type = 0;
+    while (last_byte == 0xFF) {
+      if (br->NumBitsLeft() < 8) {
+        // Not enough data for payload_type byte. If any bits are left, it's an error.
+        // If no bits left, it might be a clean end if previous message ended perfectly.
+        return br->NumBitsLeft() > 0 ? kInvalidStream : kOk;
+      }
+      TRUE_OR_RETURN(br->ReadBits(8, &last_byte));
+      payload_type += last_byte;
+    }
+
+    last_byte = 0xFF;
+    unsigned int payload_size = 0;
+    while (last_byte == 0xFF) {
+       if (br->NumBitsLeft() < 8) return kInvalidStream; // Not enough for payload_size byte
+      TRUE_OR_RETURN(br->ReadBits(8, &last_byte));
+      payload_size += last_byte;
+    }
+    
+    DVLOG(4) << "H.265 SEI: Found message type " << payload_type << " with size " << payload_size;
+
+    if (payload_size * 8 > br->NumBitsLeft()) {
+        DVLOG(1) << "H.265 SEI: Payload size " << payload_size 
+                 << " exceeds remaining bits " << br->NumBitsLeft();
+        return kInvalidStream;
+    }
+
+    // Handle the SEI message payload based on type
+    if (payload_type == H265SEIMessage::kSEIUserDataUnregistered) {
+      if (payload_size < 16) {
+        DVLOG(1) << "H.265 User data unregistered SEI payload (" << payload_size
+                 << " bytes) too small for 16-byte UUID. Skipping.";
+        TRUE_OR_RETURN(br->SkipBytes(payload_size));
+      } else {
+        // We don't need to store the H265SEIMessage struct for this subtask,
+        // just parse directly and update cea608_caption_info_.
+        uint8_t uuid[16];
+        for (int i = 0; i < 16; ++i) {
+          if (br->NumBitsLeft() < 8) return kInvalidStream;
+          TRUE_OR_RETURN(br->ReadBits(8, &uuid[i]));
+        }
+
+        int user_data_bytes_to_read = payload_size - 16;
+        std::vector<uint8_t> user_data;
+        if (user_data_bytes_to_read > 0) {
+          user_data.resize(user_data_bytes_to_read);
+          for (int i = 0; i < user_data_bytes_to_read; ++i) {
+            if (br->NumBitsLeft() < 8) return kInvalidStream;
+            TRUE_OR_RETURN(br->ReadBits(8, &user_data[i]));
+          }
+        }
+
+        // CEA-608 detection logic (same as H.264)
+        if (user_data.size() >= 11) {
+          uint8_t country_code = user_data[0];
+          uint16_t provider_code = (static_cast<uint16_t>(user_data[1]) << 8) | user_data[2];
+          bool id_match = (user_data[3] == 'G' && user_data[4] == 'A' &&
+                           user_data[5] == '9' && user_data[6] == '4');
+          uint8_t user_data_type_code = user_data[7];
+
+          if (country_code == 0xB5 && provider_code == 0x0031 &&
+              id_match && user_data_type_code == 0x03) {
+            for (size_t k = 8; (k + 3) <= user_data.size(); k += 3) {
+              uint8_t cc_info_byte = user_data[k];
+              bool cc_valid = (cc_info_byte >> 2) & 0x01;
+              if (cc_valid) {
+                bool task_field_is_field1_type = ((cc_info_byte & 0x04) == 0);
+                uint8_t task_channel_pair_bits = cc_info_byte & 0x03;
+
+                if (task_channel_pair_bits == 0x00) { // Task: CC1 / CC2
+                  if (task_field_is_field1_type) { // Task: Field 1 type -> CC1
+                    cea608_caption_info_.has_cc1 = true;
+                  } else { // Task: Field 2 type -> CC2
+                    cea608_caption_info_.has_cc2 = true;
+                  }
+                } else if (task_channel_pair_bits == 0x01) { // Task: CC3 / CC4
+                  if (task_field_is_field1_type) { // Task: Field 1 type -> CC3
+                    cea608_caption_info_.has_cc3 = true;
+                  } else { // Task: Field 2 type -> CC4
+                    cea608_caption_info_.has_cc4 = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // Skip payload of other SEI message types.
+      DVLOG(4) << "H.265 SEI: Skipping message type " << payload_type << " of size " << payload_size;
+      TRUE_OR_RETURN(br->SkipBytes(payload_size));
+    }
+
+    // According to HEVC spec (D.2.1), SEI messages are byte aligned if they are
+    // not the last one in the NAL unit. If rbsp_trailing_bits() are present,
+    // they follow this alignment.
+    // The loop condition br->HasMoreRBSPData() should inherently handle this,
+    // as it checks for the stop bit or more data. If there are more bytes (more SEI messages),
+    // the loop will continue. If it's the end of the NALU (stop bit), HasMoreRBSPData will be false.
+    // H26xBitReader::HasMoreRBSPData() implicitly handles emulation prevention bytes and stop bit.
+    // No explicit byte_alignment() call should be needed here if HasMoreRBSPData() is used as loop condition.
+
+  } while (br->HasMoreRBSPData() && br->NumBitsLeft() > 8); // Continue if more RBSP data and enough bits for another header byte
+
+  return kOk;
+}
+
 }  // namespace media
 }  // namespace shaka

@@ -51,3 +51,8 @@ ABSL_FLAG(bool,
           false,
           "Playback of Offline HLS assets shall use EXT-X-SESSION-KEY "
           "to declare all eligible content keys in the master playlist.");
+ABSL_FLAG(bool,
+          detect_cea,
+          false,
+          "Enables the detection of CEA-608 captions and the addition of "
+          "corresponding #EXT-X-MEDIA tags to the HLS master manifest.");

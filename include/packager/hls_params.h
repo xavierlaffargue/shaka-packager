@@ -72,6 +72,9 @@ struct HlsParams {
   std::optional<double> start_time_offset;
   /// Create EXT-X-SESSION-KEY in master playlist
   bool create_session_keys;
+  /// Enables the detection of CEA-608 captions and the addition of
+  /// corresponding #EXT-X-MEDIA tags to the HLS master manifest.
+  bool detect_cea = false;
 };
 
 }  // namespace shaka

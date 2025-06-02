@@ -12,6 +12,16 @@
 namespace shaka {
 namespace media {
 
+// Information about detected CEA-608 captions.
+struct CEA608CaptionInfo {
+  CEA608CaptionInfo()
+      : has_cc1(false), has_cc2(false), has_cc3(false), has_cc4(false) {}
+  bool has_cc1;
+  bool has_cc2;
+  bool has_cc3;
+  bool has_cc4;
+};
+
 enum class H26xStreamFormat {
   kUnSpecified,
   kAnnexbByteStream,
@@ -163,6 +173,9 @@ class VideoStreamInfo : public StreamInfo {
   // Not using DISALLOW_COPY_AND_ASSIGN here intentionally to allow the compiler
   // generated copy constructor and assignment operator. Since the extra data is
   // typically small, the performance impact is minimal.
+
+ public:
+  CEA608CaptionInfo cea608_caption_info;
 };
 
 }  // namespace media
