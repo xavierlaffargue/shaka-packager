@@ -181,6 +181,7 @@ bool EsParserH265::UpdateVideoDecoderConfig(int pps_id) {
       sps->vui_parameters.matrix_coefficients,
       sps->vui_parameters.transfer_characteristics, 0, nalu_length_size,
       std::string(), false);
+
   last_video_decoder_config_->cea608_caption_info = h265_parser_->GetCea608Info();
 
   // Video config notification.

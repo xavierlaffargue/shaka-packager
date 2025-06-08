@@ -38,7 +38,7 @@ EsParserH264::~EsParserH264() {}
 void EsParserH264::Reset() {
   DVLOG(1) << "EsParserH264::Reset";
   h264_parser_.reset(new H264Parser());
-  last_video_decoder_config_ = std::shared_ptr<StreamInfo>();
+  last_video_decoder_config_ = std::shared_ptr<VideoStreamInfo>();
   decoder_config_check_pending_ = false;
   EsParserH26x::Reset();
 }

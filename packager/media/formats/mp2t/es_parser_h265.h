@@ -16,6 +16,7 @@
 #include <packager/macros/classes.h>
 #include <packager/media/formats/mp2t/es_parser_h26x.h>
 #include <functional>
+#include "packager/media/base/video_stream_info.h"
 
 namespace shaka {
 namespace media {
@@ -47,7 +48,7 @@ class EsParserH265 : public EsParserH26x {
   NewStreamInfoCB new_stream_info_cb_;
 
   // Last video decoder config.
-  std::shared_ptr<StreamInfo> last_video_decoder_config_;
+  std::shared_ptr<VideoStreamInfo> last_video_decoder_config_;
   bool decoder_config_check_pending_;
 
   std::unique_ptr<H265Parser> h265_parser_;

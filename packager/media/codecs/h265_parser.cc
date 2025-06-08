@@ -1767,7 +1767,7 @@ H265Parser::Result H265Parser::ParseSEIMessages(const Nalu& nalu) {
 
   do {
     // ff_byte (shall be 0xFF)
-    unsigned int last_byte = 0xFF; 
+    int last_byte = 0xFF;
     unsigned int payload_type = 0;
     while (last_byte == 0xFF) {
       if (br->NumBitsLeft() < 8) {
@@ -1780,7 +1780,7 @@ H265Parser::Result H265Parser::ParseSEIMessages(const Nalu& nalu) {
     }
 
     last_byte = 0xFF;
-    unsigned int payload_size = 0;
+    int payload_size = 0;
     while (last_byte == 0xFF) {
        if (br->NumBitsLeft() < 8) return kInvalidStream; // Not enough for payload_size byte
       TRUE_OR_RETURN(br->ReadBits(8, &last_byte));
@@ -1800,14 +1800,16 @@ H265Parser::Result H265Parser::ParseSEIMessages(const Nalu& nalu) {
       if (payload_size < 16) {
         DVLOG(1) << "H.265 User data unregistered SEI payload (" << payload_size
                  << " bytes) too small for 16-byte UUID. Skipping.";
-        TRUE_OR_RETURN(br->SkipBytes(payload_size));
+        TRUE_OR_RETURN(br->SkipBits(payload_size));
       } else {
         // We don't need to store the H265SEIMessage struct for this subtask,
         // just parse directly and update cea608_caption_info_.
         uint8_t uuid[16];
         for (int i = 0; i < 16; ++i) {
           if (br->NumBitsLeft() < 8) return kInvalidStream;
-          TRUE_OR_RETURN(br->ReadBits(8, &uuid[i]));
+          int temp_byte = 0;
+          TRUE_OR_RETURN(br->ReadBits(8, &temp_byte));
+          uuid[i] = static_cast<uint8_t>(temp_byte);
         }
 
         int user_data_bytes_to_read = payload_size - 16;
@@ -1816,7 +1818,9 @@ H265Parser::Result H265Parser::ParseSEIMessages(const Nalu& nalu) {
           user_data.resize(user_data_bytes_to_read);
           for (int i = 0; i < user_data_bytes_to_read; ++i) {
             if (br->NumBitsLeft() < 8) return kInvalidStream;
-            TRUE_OR_RETURN(br->ReadBits(8, &user_data[i]));
+            int temp_byte = 0;
+            TRUE_OR_RETURN(br->ReadBits(8, &temp_byte));
+            user_data[i] = static_cast<uint8_t>(temp_byte);
           }
         }
 
@@ -1858,7 +1862,7 @@ H265Parser::Result H265Parser::ParseSEIMessages(const Nalu& nalu) {
     } else {
       // Skip payload of other SEI message types.
       DVLOG(4) << "H.265 SEI: Skipping message type " << payload_type << " of size " << payload_size;
-      TRUE_OR_RETURN(br->SkipBytes(payload_size));
+      TRUE_OR_RETURN(br->SkipBits(payload_size));
     }
 
     // According to HEVC spec (D.2.1), SEI messages are byte aligned if they are

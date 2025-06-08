@@ -137,7 +137,9 @@ const char kUsage[] =
     "    used to caption short portions of the audio that might be in a \n"
     "    foreign language. For DASH this will set role to forced_subtitle, \n"
     "    for HLS it will set FORCED=YES and AUTOSELECT=YES. \n"
-    "    Only valid for subtitles.\n";
+    "  - detect-cea: Optional. Defaults to 0 if not specified. If set to 1 \n"
+    "    the packager will attempt to detect CEA-608 captions. \n"
+    "    should be displayed when subtitles are otherwise off, for example \n";
 
 // Labels for parameters in RawKey key info.
 const char kDrmLabelLabel[] = "label";

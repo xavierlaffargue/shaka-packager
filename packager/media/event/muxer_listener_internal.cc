@@ -111,7 +111,7 @@ void AddVideoInfo(const VideoStreamInfo* video_stream_info,
       video_stream_info->cea608_caption_info.has_cc2 ||
       video_stream_info->cea608_caption_info.has_cc3 ||
       video_stream_info->cea608_caption_info.has_cc4) {
-    MediaInfo_CEA608CaptionInfoPb* cea608_pb =
+    CEA608CaptionInfoPb* cea608_pb =
         video_info->mutable_cea608_caption_info();
     cea608_pb->set_has_cc1(video_stream_info->cea608_caption_info.has_cc1);
     cea608_pb->set_has_cc2(video_stream_info->cea608_caption_info.has_cc2);

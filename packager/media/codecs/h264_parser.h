@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <map>
 #include <memory>
+#include <variant>
 #include <vector>
 
 #include <packager/macros/classes.h>
@@ -245,10 +246,7 @@ struct H264SEIMessage {
 
   int type;
   int payload_size;
-  union {
-    H264SEIRecoveryPoint recovery_point;
-    H264SEIUserDataUnregistered user_data_unregistered;
-  };
+  std::variant<H264SEIRecoveryPoint, H264SEIUserDataUnregistered> payload;
 };
 
 // Class to parse an Annex-B H.264 stream,

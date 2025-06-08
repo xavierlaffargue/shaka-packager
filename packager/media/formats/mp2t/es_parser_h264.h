@@ -10,6 +10,7 @@
 #include <memory>
 
 #include <packager/media/formats/mp2t/es_parser_h26x.h>
+#include "packager/media/base/video_stream_info.h"
 
 namespace shaka {
 namespace media {
@@ -45,7 +46,7 @@ class EsParserH264 : public EsParserH26x {
   // Callback to pass the stream configuration.
   NewStreamInfoCB new_stream_info_cb_;
 
-  std::shared_ptr<StreamInfo> last_video_decoder_config_;
+  std::shared_ptr<VideoStreamInfo> last_video_decoder_config_;
   bool decoder_config_check_pending_;
 
   std::unique_ptr<H264Parser> h264_parser_;

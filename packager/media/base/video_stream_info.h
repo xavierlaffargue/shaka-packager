@@ -86,6 +86,7 @@ class VideoStreamInfo : public StreamInfo {
   uint32_t playback_rate() const { return playback_rate_; }
   const std::vector<uint8_t>& eme_init_data() const { return eme_init_data_; }
   const std::vector<uint8_t>& colr_data() const { return colr_data_; }
+  CEA608CaptionInfo cea608_caption_info;
 
   void set_supplemental_codec(const std::string supplemental_codec) {
     supplemental_codec_ = supplemental_codec;
@@ -173,9 +174,6 @@ class VideoStreamInfo : public StreamInfo {
   // Not using DISALLOW_COPY_AND_ASSIGN here intentionally to allow the compiler
   // generated copy constructor and assignment operator. Since the extra data is
   // typically small, the performance impact is minimal.
-
- public:
-  CEA608CaptionInfo cea608_caption_info;
 };
 
 }  // namespace media

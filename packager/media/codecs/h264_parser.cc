@@ -5,6 +5,7 @@
 #include <packager/media/codecs/h264_parser.h>
 
 #include <memory>
+#include <vector>
 
 #include <absl/log/check.h>
 #include <absl/log/log.h>
@@ -1174,7 +1175,7 @@ H264Parser::Result H264Parser::ParseSEI(const Nalu& nalu,
   size_t initial_bits_left_for_payload = br->NumBitsLeft();
 
   switch (sei_msg->type) {
-    case H264SEIMessage::kSEIRecoveryPoint:
+    case H264SEIMessage::kSEIRecoveryPoint: {
       // Minimum payload for recovery point:
       // recovery_frame_cnt (ue(v)) - typically 1 byte for small values
       // exact_match_flag (1 bit)
@@ -1182,15 +1183,19 @@ H264Parser::Result H264Parser::ParseSEI(const Nalu& nalu,
       // changing_slice_group_idc (2 bits)
       // Total ~10 bits. If payload_size is 0, it's invalid.
       if (sei_msg->payload_size == 0) {
-          DVLOG(1) << "SEI recovery point payload is empty, which is invalid.";
-          return kInvalidStream; 
+        DVLOG(1) << "SEI recovery point payload is empty, which is invalid.";
+        return kInvalidStream;
       }
-      READ_UE_OR_RETURN(&sei_msg->recovery_point.recovery_frame_cnt);
-      READ_BOOL_OR_RETURN(&sei_msg->recovery_point.exact_match_flag);
-      READ_BOOL_OR_RETURN(&sei_msg->recovery_point.broken_link_flag);
-      READ_BITS_OR_RETURN(2, &sei_msg->recovery_point.changing_slice_group_idc);
-      break;
 
+      H264SEIRecoveryPoint& recovery_point =
+          std::get<H264SEIRecoveryPoint>(sei_msg->payload);
+
+      READ_UE_OR_RETURN(&recovery_point.recovery_frame_cnt);
+      READ_BOOL_OR_RETURN(&recovery_point.exact_match_flag);
+      READ_BOOL_OR_RETURN(&recovery_point.broken_link_flag);
+      READ_BITS_OR_RETURN(2, &recovery_point.changing_slice_group_idc);
+      break;
+    }
     case H264SEIMessage::kSEIUserDataUnregistered: {
       if (sei_msg->payload_size < 16) {
         DVLOG(1) << "User data unregistered SEI payload (" << sei_msg->payload_size 
@@ -1198,18 +1203,29 @@ H264Parser::Result H264Parser::ParseSEI(const Nalu& nalu,
         // Skipping is handled by the consumption check at the end of the function.
         break; 
       }
+
+      H264SEIUserDataUnregistered& user_data_unregistered =
+          std::get<H264SEIUserDataUnregistered>(sei_msg->payload);
+
       for (int i = 0; i < 16; ++i) {
         // Ensure there are enough bits for each byte of the UUID
         if (br->NumBitsLeft() < 8) return kInvalidStream;
-        READ_BITS_OR_RETURN(8, &sei_msg->user_data_unregistered.uuid[i]);
+
+        int temp = 0;
+        READ_BITS_OR_RETURN(8, &temp);
+        user_data_unregistered.uuid[i] = static_cast<uint8_t>(temp);
       }
 
       int user_data_bytes_to_read = sei_msg->payload_size - 16;
+
       if (user_data_bytes_to_read > 0) {
-        sei_msg->user_data_unregistered.data.resize(user_data_bytes_to_read);
+        user_data_unregistered.data.resize(user_data_bytes_to_read);
         for (int i = 0; i < user_data_bytes_to_read; ++i) {
           if (br->NumBitsLeft() < 8) return kInvalidStream; // Check before reading each byte
-          READ_BITS_OR_RETURN(8, &sei_msg->user_data_unregistered.data[i]);
+
+          int temp = 0;
+          READ_BITS_OR_RETURN(8, &temp);
+          user_data_unregistered.data[i] = static_cast<uint8_t>(temp);
         }
       }
       // If user_data_bytes_to_read is 0, data vector remains empty.
@@ -1219,8 +1235,8 @@ H264Parser::Result H264Parser::ParseSEI(const Nalu& nalu,
       // country_code(1)+provider_code(2)+user_identifier(4)+user_data_type_code(1) = 8 bytes
       // Then, for cc_data: at least one 3-byte unit (cc_info, cc_data1, cc_data2).
       // So, 8 + 3 = 11 bytes for the user_data part of the payload.
-      if (sei_msg->user_data_unregistered.data.size() >= 11) {
-        const std::vector<uint8_t>& user_data = sei_msg->user_data_unregistered.data;
+      if (user_data_unregistered.data.size() >= 11) {
+        const std::vector<uint8_t>& user_data = user_data_unregistered.data;
         uint8_t country_code = user_data[0];
         // Provider code is 2 bytes, big-endian.
         uint16_t provider_code = (static_cast<uint16_t>(user_data[1]) << 8) | user_data[2];
