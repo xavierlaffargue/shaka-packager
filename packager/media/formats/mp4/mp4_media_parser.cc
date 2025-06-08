@@ -34,6 +34,9 @@
 #include <packager/media/codecs/hevc_decoder_configuration_record.h>
 #include <packager/media/codecs/iamf_audio_util.h>
 #include <packager/media/codecs/vp_codec_configuration_record.h>
+#include <packager/media/codecs/h264_parser.h>
+#include <packager/media/codecs/h265_parser.h>
+#include <packager/media/codecs/nalu_reader.h>
 #include <packager/media/formats/mp4/box_definitions.h>
 #include <packager/media/formats/mp4/box_reader.h>
 #include <packager/media/formats/mp4/track_run_iterator.h>
@@ -292,6 +295,8 @@ void MP4MediaParser::Reset() {
   runs_.reset();
   moof_head_ = 0;
   mdat_tail_ = 0;
+  h264_parsers_.clear();
+  h265_parsers_.clear();
 }
 
 bool MP4MediaParser::Flush() {
@@ -1052,6 +1057,88 @@ bool MP4MediaParser::EnqueueSample(bool* err) {
   stream_sample->set_pts(runs_->cts());
   stream_sample->set_duration(runs_->duration());
 
+  // TODO(rkuroiwa): Implement NALU processing for H.264/H.265.
+  // Added in b/269709762.
+  const uint32_t track_id = runs_->track_id();
+  const Track* track = moov_->GetTrackById(track_id);
+  if (track) {
+    const SampleDescription& samp_descr =
+        track->media.information.sample_table.description;
+    // It is not uncommon to find otherwise-valid files with incorrect sample
+    // description indices, so we fail gracefully in that case.
+    size_t desc_idx = runs_->sample_description_index();
+    if (desc_idx > 0)
+      desc_idx -= 1;  // BMFF descriptor index is one-based.
+    if (samp_descr.type == kVideo && desc_idx < samp_descr.video_entries.size()) {
+      const VideoSampleEntry& entry = samp_descr.video_entries[desc_idx];
+      const FourCC actual_format = entry.GetActualFormat();
+      const Codec video_codec = FourCCToCodec(actual_format);
+
+      if (video_codec == kCodecH264 || video_codec == kCodecH265) {
+        H26xStreamParser* h26x_parser = nullptr;
+        if (video_codec == kCodecH264) {
+          auto it = h264_parsers_.find(track_id);
+          if (it == h264_parsers_.end()) {
+            auto new_parser = std::make_unique<H264Parser>();
+            h26x_parser = new_parser.get();
+            h264_parsers_[track_id] = std::move(new_parser);
+            // TODO(rkuroiwa): Parse and set SPS/PPS. Added in b/269709762.
+          } else {
+            h26x_parser = it->second.get();
+          }
+        } else {  // video_codec == kCodecH265
+          auto it = h265_parsers_.find(track_id);
+          if (it == h265_parsers_.end()) {
+            auto new_parser = std::make_unique<H265Parser>();
+            h26x_parser = new_parser.get();
+            h265_parsers_[track_id] = std::move(new_parser);
+            // TODO(rkuroiwa): Parse and set SPS/PPS. Added in b/269709762.
+          } else {
+            h26x_parser = it->second.get();
+          }
+        }
+
+        const VideoStreamInfo* video_stream_info =
+            static_cast<const VideoStreamInfo*>(
+                runs_->stream_info().get());
+        NaluReader nalu_reader(
+            video_codec == kCodecH264 ? H26xStreamFormat::kAvc : H26xStreamFormat::kHevc,
+            video_stream_info->nalu_length_size(),
+            stream_sample->data(), stream_sample->data_size());
+
+        Nalu nalu;
+        NaluReader::Result nalu_reader_result;
+        while ((nalu_reader_result = nalu_reader.Advance(&nalu)) ==
+               NaluReader::kOk) {
+          if (video_codec == kCodecH264) {
+            if (nalu.type() == Nalu::H264_SEIMessage) {
+              H264SEIMessage sei_message;
+              if (!static_cast<H264Parser*>(h26x_parser)
+                       ->ParseSEI(&nalu, &sei_message)) {
+                LOG(WARNING) << "Failed to parse H.264 SEI NALU.";
+              }
+              // TODO(rkuroiwa): Store/process CEA608 info. Added in b/269709762.
+              h26x_parser->GetCea608Info();
+            }
+          } else {  // video_codec == kCodecH265
+            if (nalu.type() == Nalu::H265_PREFIX_SEI) {
+              if (!static_cast<H265Parser*>(h26x_parser)
+                       ->ParseSEIMessages(nalu.data(), nalu.header_size() + nalu.payload_size())) {
+                LOG(WARNING) << "Failed to parse H.265 SEI NALU.";
+              }
+              // TODO(rkuroiwa): Store/process CEA608 info. Added in b/269709762.
+              h26x_parser->GetCea608Info();
+            }
+          }
+        }
+        if (nalu_reader_result != NaluReader::kEOStream) {
+          LOG(WARNING) << "Failed to read NALUs from sample.";
+        }
+      }
+    }
+  }
+
+
   DVLOG(3) << "Pushing frame: "
            << ", key=" << runs_->is_keyframe()
            << ", dur=" << runs_->duration()
@@ -1059,7 +1146,7 @@ bool MP4MediaParser::EnqueueSample(bool* err) {
            << ", cts=" << runs_->cts()
            << ", size=" << runs_->sample_size();
 
-  if (!new_sample_cb_(runs_->track_id(), stream_sample)) {
+  if (!new_sample_cb_(track_id, stream_sample)) {
     *err = true;
     LOG(ERROR) << "Failed to process the sample.";
     return false;
@@ -1090,6 +1177,21 @@ bool MP4MediaParser::ReadAndDiscardMDATsUntil(const int64_t offset) {
 void MP4MediaParser::ChangeState(State new_state) {
   DVLOG(2) << "Changing state: " << new_state;
   state_ = new_state;
+}
+
+CEA608CaptionInfo MP4MediaParser::GetCea608CaptionInfoForTrack(
+    uint32_t track_id) const {
+  auto h264_it = h264_parsers_.find(track_id);
+  if (h264_it != h264_parsers_.end()) {
+    return h264_it->second->GetCea608Info();
+  }
+
+  auto h265_it = h265_parsers_.find(track_id);
+  if (h265_it != h265_parsers_.end()) {
+    return h265_it->second->GetCea608Info();
+  }
+
+  return CEA608CaptionInfo();  // Return default/empty if not found
 }
 
 }  // namespace mp4

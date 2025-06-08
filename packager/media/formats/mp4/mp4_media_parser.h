@@ -19,11 +19,16 @@
 #include <packager/media/base/decryptor_source.h>
 #include <packager/media/base/media_parser.h>
 #include <packager/media/base/offset_byte_queue.h>
+#include <packager/media/base/video_stream_info.h>  // For CEA608CaptionInfo
 
 ABSL_DECLARE_FLAG(bool, use_dovi_supplemental_codecs);
 
 namespace shaka {
 namespace media {
+
+class H264Parser;
+class H265Parser;
+
 namespace mp4 {
 
 class BoxReader;
@@ -105,8 +110,16 @@ class MP4MediaParser : public MediaParser {
 
   std::unique_ptr<Movie> moov_;
   std::unique_ptr<TrackRunIterator> runs_;
+  std::map<uint32_t, std::unique_ptr<H264Parser>> h264_parsers_;
+  std::map<uint32_t, std::unique_ptr<H265Parser>> h265_parsers_;
 
   DISALLOW_COPY_AND_ASSIGN(MP4MediaParser);
+
+ public:
+  // Retrieves CEA-608 caption information for a given video track.
+  // Returns an empty CEA608CaptionInfo if the track is not found,
+  // is not H.264/H.265, or no caption info has been parsed.
+  CEA608CaptionInfo GetCea608CaptionInfoForTrack(uint32_t track_id) const;
 };
 
 }  // namespace mp4
