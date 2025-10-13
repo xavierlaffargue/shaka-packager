@@ -263,15 +263,17 @@ ProgramDateTimeEntry::ProgramDateTimeEntry(const absl::Time& program_time)
       program_time_(program_time) {}
 
 std::string ProgramDateTimeEntry::ToString() {
-  absl::CivilSecond cs = absl::ToCivilSecond(program_time_, absl::UTCTimeZone());
+  absl::CivilSecond cs =
+      absl::ToCivilSecond(program_time_, absl::UTCTimeZone());
 
   int64_t total_ms = absl::ToUnixMillis(program_time_);
   int ms = static_cast<int>(total_ms % 1000);
-  if (ms < 0) ms += 1000;  // correction pour les temps négatifs éventuels
+  if (ms < 0)
+    ms += 1000;  // correction pour les temps négatifs éventuels
 
   return absl::StrFormat(
-      "#EXT-X-PROGRAM-DATE-TIME:%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-      cs.year(), cs.month(), cs.day(), cs.hour(), cs.minute(), cs.second(), ms);
+      "#EXT-X-PROGRAM-DATE-TIME:%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", cs.year(),
+      cs.month(), cs.day(), cs.hour(), cs.minute(), cs.second(), ms);
 }
 
 class PlacementOpportunityEntry : public HlsEntry {
@@ -357,10 +359,10 @@ MediaPlaylist::MediaPlaylist(const HlsParams& hls_params,
       media_sequence_number_(hls_params_.media_sequence_number),
 
       reference_time_(absl::InfinitePast()) {
-        // When there's a forced media_sequence_number, start with discontinuity
-        if (media_sequence_number_ > 0)
-          entries_.emplace_back(new DiscontinuityEntry());
-      }
+  // When there's a forced media_sequence_number, start with discontinuity
+  if (media_sequence_number_ > 0)
+    entries_.emplace_back(new DiscontinuityEntry());
+}
 
 MediaPlaylist::~MediaPlaylist() {}
 
@@ -674,8 +676,8 @@ void MediaPlaylist::AddSegmentInfoEntry(const std::string& segment_file_name,
     }
   }
 
-  if (hls_params_.add_program_date_time
-    && reference_time_ != absl::InfinitePast()) {
+  if (hls_params_.add_program_date_time &&
+      reference_time_ != absl::InfinitePast()) {
     // See if we need to add a program date time tag. It is added before the
     // first segment, and after every discontinuity.
     bool is_first_segment = true;
@@ -691,20 +693,19 @@ void MediaPlaylist::AddSegmentInfoEntry(const std::string& segment_file_name,
       const auto& last = *entries_.back();
       if (last.type() == HlsEntry::EntryType::kExtDiscontinuity) {
         is_discontinuity = true;
-      }
-      else if (entries_.size() >= 2) {
+      } else if (entries_.size() >= 2) {
         const auto& second_last = **std::prev(entries_.cend(), 2);
         if (last.type() == HlsEntry::EntryType::kExtKey &&
-          second_last.type() == HlsEntry::EntryType::kExtDiscontinuity) {
+            second_last.type() == HlsEntry::EntryType::kExtDiscontinuity) {
           is_discontinuity = true;
-          }
+        }
       }
     }
 
     if (is_first_segment || is_discontinuity) {
       const absl::Time program_time =
           reference_time_ +
-            absl::Seconds(static_cast<double>(start_time) / time_scale_);
+          absl::Seconds(static_cast<double>(start_time) / time_scale_);
       entries_.emplace_back(new ProgramDateTimeEntry(program_time));
     }
   }

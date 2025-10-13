@@ -332,12 +332,12 @@ class MediaPlaylist {
 };
 
 class ProgramDateTimeEntry : public HlsEntry {
-public:
+ public:
   explicit ProgramDateTimeEntry(const absl::Time& program_time);
 
   std::string ToString() override;
 
-private:
+ private:
   ProgramDateTimeEntry(const ProgramDateTimeEntry&) = delete;
   ProgramDateTimeEntry& operator=(const ProgramDateTimeEntry&) = delete;
 

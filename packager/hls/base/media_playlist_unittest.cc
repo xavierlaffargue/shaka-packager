@@ -1235,8 +1235,8 @@ TEST_F(MediaPlaylistMultiSegmentTest, ProgramDateTime) {
 
   absl::Time reference_time;
   std::string err;
-  bool ok = absl::ParseTime("%Y-%m-%dT%H:%M:%E3SZ",
-  "2025-10-12T14:00:00.000Z", &reference_time, &err);
+  bool ok = absl::ParseTime("%Y-%m-%dT%H:%M:%E3SZ", "2025-10-12T14:00:00.000Z",
+                            &reference_time, &err);
 
   ASSERT_TRUE(ok) << err;
 
@@ -1269,8 +1269,8 @@ TEST_F(MediaPlaylistMultiSegmentTest, ProgramDateTimeWithDiscontinuity) {
   absl::Time reference_time;
   std::string err;
   bool ok = absl::ParseTime(
-      "%Y-%m-%dT%H:%M:%E3SZ",        // format avec millisecondes + 'Z' pour UTC
-      "2025-10-12T14:00:00.000Z",    // la chaîne à parser
+      "%Y-%m-%dT%H:%M:%E3SZ",      // format avec millisecondes + 'Z' pour UTC
+      "2025-10-12T14:00:00.000Z",  // la chaîne à parser
       &reference_time, &err);
 
   ASSERT_TRUE(ok) << err;
@@ -1287,7 +1287,7 @@ TEST_F(MediaPlaylistMultiSegmentTest, ProgramDateTimeWithDiscontinuity) {
   media_playlist_->AddSegment("file2.ts", 25 * kTimeScale, 10 * kTimeScale,
                               kZeroByteOffset, kMBytes);
   media_playlist_->AddSegment("file3.ts", 25 * kTimeScale, 10 * kTimeScale,
-                            kZeroByteOffset, kMBytes);
+                              kZeroByteOffset, kMBytes);
 
   const char kExpectedOutput[] =
       "#EXTM3U\n"
