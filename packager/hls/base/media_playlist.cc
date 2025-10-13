@@ -354,7 +354,9 @@ MediaPlaylist::MediaPlaylist(const HlsParams& hls_params,
       file_name_(file_name),
       name_(name),
       group_id_(group_id),
-      media_sequence_number_(hls_params_.media_sequence_number) {
+      media_sequence_number_(hls_params_.media_sequence_number),
+
+      reference_time_(absl::InfinitePast()) {
         // When there's a forced media_sequence_number, start with discontinuity
         if (media_sequence_number_ > 0)
           entries_.emplace_back(new DiscontinuityEntry());
@@ -677,6 +679,7 @@ void MediaPlaylist::AddSegmentInfoEntry(const std::string& segment_file_name,
     // See if we need to add a program date time tag. It is added before the
     // first segment, and after every discontinuity.
     bool is_first_segment = true;
+    bool is_discontinuity = false;
     if (!entries_.empty()) {
       for (auto it = entries_.rbegin(); it != entries_.rend(); ++it) {
         if ((*it)->type() == HlsEntry::EntryType::kExtInf) {
@@ -684,16 +687,26 @@ void MediaPlaylist::AddSegmentInfoEntry(const std::string& segment_file_name,
           break;
         }
       }
+
+      const auto& last = *entries_.back();
+      if (last.type() == HlsEntry::EntryType::kExtDiscontinuity) {
+        is_discontinuity = true;
+      }
+      else if (entries_.size() >= 2) {
+        const auto& second_last = **std::prev(entries_.cend(), 2);
+        if (last.type() == HlsEntry::EntryType::kExtKey &&
+          second_last.type() == HlsEntry::EntryType::kExtDiscontinuity) {
+          is_discontinuity = true;
+          }
+      }
     }
-    if (is_first_segment ||
-        (!entries_.empty() &&
-         entries_.back()->type() == HlsEntry::EntryType::kExtDiscontinuity)) {
+
+    if (is_first_segment || is_discontinuity) {
       const absl::Time program_time =
           reference_time_ +
             absl::Seconds(static_cast<double>(start_time) / time_scale_);
-
       entries_.emplace_back(new ProgramDateTimeEntry(program_time));
-         }
+    }
   }
 
   entries_.emplace_back(new SegmentInfoEntry(
