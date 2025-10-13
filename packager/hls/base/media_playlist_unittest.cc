@@ -1269,8 +1269,8 @@ TEST_F(MediaPlaylistMultiSegmentTest, ProgramDateTimeWithDiscontinuity) {
   absl::Time reference_time;
   std::string err;
   bool ok = absl::ParseTime(
-      "%Y-%m-%dT%H:%M:%E3SZ",      // format avec millisecondes + 'Z' pour UTC
-      "2025-10-12T14:00:00.000Z",  // la chaîne à parser
+      "%Y-%m-%dT%H:%M:%E3SZ",
+      "2025-10-12T14:00:00.000Z",
       &reference_time, &err);
 
   ASSERT_TRUE(ok) << err;

@@ -141,7 +141,6 @@ class MediaPlaylist {
 
   /// Set the reference time for EXT-X-PROGRAM-DATE-TIME. This is the wall clock
   /// time for when media timestamp is 0.
-  /// This should be called before AddSegment() and AddKeyFrame().
   virtual void SetReferenceTime(const absl::Time& reference_time);
 
   /// Keyframes must be added in order. It is also called before the containing

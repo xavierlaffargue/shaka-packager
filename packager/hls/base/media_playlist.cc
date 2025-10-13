@@ -269,7 +269,7 @@ std::string ProgramDateTimeEntry::ToString() {
   int64_t total_ms = absl::ToUnixMillis(program_time_);
   int ms = static_cast<int>(total_ms % 1000);
   if (ms < 0)
-    ms += 1000;  // correction pour les temps négatifs éventuels
+    ms += 1000;  // correction for possible negative times
 
   return absl::StrFormat(
       "#EXT-X-PROGRAM-DATE-TIME:%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", cs.year(),
@@ -357,7 +357,6 @@ MediaPlaylist::MediaPlaylist(const HlsParams& hls_params,
       name_(name),
       group_id_(group_id),
       media_sequence_number_(hls_params_.media_sequence_number),
-
       reference_time_(absl::InfinitePast()) {
   // When there's a forced media_sequence_number, start with discontinuity
   if (media_sequence_number_ > 0)

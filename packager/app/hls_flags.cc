@@ -55,5 +55,4 @@ ABSL_FLAG(bool,
           add_program_date_time,
           false,
           "Add EXT-X-PROGRAM-DATE-TIME tag to the playlist. The date time is "
-          "derived from the current wall clock time, and is adjusted by "
-          "|suggested_presentation_delay| if it is specified in DASH profile.");
+          "derived from the current wall clock time.");
