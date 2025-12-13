@@ -22,6 +22,9 @@
 #include <packager/macros/logging.h>
 #include <packager/version/version.h>
 
+#include "packager/kv_pairs/kv_pairs.h"
+#include "packager/utils/string_trim_split.h"
+
 namespace shaka {
 namespace hls {
 namespace {
@@ -44,6 +47,7 @@ struct Variant {
   std::set<std::string> text_codecs;
   const std::string* audio_group_id = nullptr;
   const std::string* text_group_id = nullptr;
+  const std::string* closed_captions_group_id = nullptr;
   // The bitrates should be the sum of audio bitrate and text bitrate.
   // However, given the constraints and assumptions, it makes sense to exclude
   // text bitrate out of the calculation:
@@ -165,7 +169,8 @@ std::list<Variant> SubtitleGroupsToVariants(
 std::list<Variant> BuildVariants(
     const std::map<std::string, std::list<const MediaPlaylist*>>& audio_groups,
     const std::map<std::string, std::list<const MediaPlaylist*>>&
-        subtitle_groups) {
+        subtitle_groups,
+        const std::list<std::string>& cea_group_ids) {
   std::list<Variant> audio_variants = AudioGroupsToVariants(audio_groups);
   std::list<Variant> subtitle_variants =
       SubtitleGroupsToVariants(subtitle_groups);
@@ -177,15 +182,22 @@ std::list<Variant> BuildVariants(
 
   for (const auto& audio_variant : audio_variants) {
     for (const auto& subtitle_variant : subtitle_variants) {
-      Variant variant;
-      variant.audio_codecs = audio_variant.audio_codecs;
-      variant.text_codecs = subtitle_variant.text_codecs;
-      variant.audio_group_id = audio_variant.audio_group_id;
-      variant.text_group_id = subtitle_variant.text_group_id;
-      variant.max_audio_bitrate = audio_variant.max_audio_bitrate;
-      variant.avg_audio_bitrate = audio_variant.avg_audio_bitrate;
-
-      merged.push_back(variant);
+      Variant base_variant;
+      base_variant.audio_codecs = audio_variant.audio_codecs;
+      base_variant.text_codecs = subtitle_variant.text_codecs;
+      base_variant.audio_group_id = audio_variant.audio_group_id;
+      base_variant.text_group_id = subtitle_variant.text_group_id;
+      base_variant.max_audio_bitrate = audio_variant.max_audio_bitrate;
+      base_variant.avg_audio_bitrate = audio_variant.avg_audio_bitrate;
+      if (!cea_group_ids.empty()) {
+        for (const auto& group_id : cea_group_ids) {
+          Variant variant_with_cea = base_variant;
+          variant_with_cea.closed_captions_group_id = &group_id;
+          merged.push_back(variant_with_cea);
+        }
+      } else {
+        merged.push_back(base_variant);
+      }
     }
   }
 
@@ -266,12 +278,13 @@ void BuildStreamInfTag(const MediaPlaylist& playlist,
     tag.AddQuotedString("SUBTITLES", *variant.text_group_id);
   }
 
-  // Since CEA captions in Shaka Packager are only an input format, but not
-  // supported as output, the HLS output should always indicate that there are
-  // no captions.  Explicitly signaling a lack of captions in HLS keeps Safari
-  // from assuming captions and showing a text track that doesn't exist.
-  // https://github.com/shaka-project/shaka-packager/issues/922#issuecomment-804304019
-  tag.AddString("CLOSED-CAPTIONS", "NONE");
+  if (variant.closed_captions_group_id) {
+    tag.AddQuotedString("CLOSED-CAPTIONS",
+                        *variant.closed_captions_group_id);
+  }
+  else {
+      tag.AddString("CLOSED-CAPTIONS", "NONE");
+  }
 
   if (playlist.stream_type() ==
       MediaPlaylist::MediaPlaylistStreamType::kVideoIFramesOnly) {
@@ -439,8 +452,28 @@ bool GroupOrderFn(std::pair<std::string, std::list<const MediaPlaylist*>>& a,
          b.second.front()->GetMediaInfo().index();
 }
 
+void BuildCeaMediaTag(const CeaCaption& caption, std::string* out) {
+  Tag tag("#EXT-X-MEDIA", out);
+  tag.AddString("TYPE", "CLOSED-CAPTIONS");
+  tag.AddQuotedString("GROUP-ID", caption.channel);
+  tag.AddQuotedString("NAME", caption.name);
+  if (!caption.language.empty()) {
+    tag.AddQuotedString("LANGUAGE", caption.language);
+  }
+  if (caption.is_default)
+    tag.AddString("DEFAULT", "YES");
+  else
+    tag.AddString("DEFAULT", "NO");
+  if (caption.autoselect)
+    tag.AddString("AUTOSELECT", "YES");
+  tag.AddQuotedString("INSTREAM-ID", caption.channel);
+  out->append("\n");
+}
+
 void AppendPlaylists(const std::string& default_audio_language,
                      const std::string& default_text_language,
+                     const std::vector<CeaCaption>& cea608,
+                     const std::vector<CeaCaption>& cea708,
                      const std::string& base_url,
                      const std::list<MediaPlaylist*>& playlists,
                      std::string* content) {
@@ -508,8 +541,23 @@ void AppendPlaylists(const std::string& default_audio_language,
                    content);
   }
 
-  std::list<Variant> variants =
-      BuildVariants(audio_playlist_groups, subtitle_playlist_groups);
+  if (!cea608.empty() || !cea708.empty()) {
+    content->append("\n");
+    for (const auto& caption : cea608) {
+      BuildCeaMediaTag(caption, content);
+    }
+    for (const auto& caption : cea708) {
+      BuildCeaMediaTag(caption, content);
+    }
+  }
+
+  std::list<std::string> cea_group_ids;
+  for (const auto& caption : cea608)
+    cea_group_ids.push_back(caption.channel);
+  for (const auto& caption : cea708)
+    cea_group_ids.push_back(caption.channel);
+  std::list<Variant> variants = BuildVariants(
+      audio_playlist_groups, subtitle_playlist_groups, cea_group_ids);
   for (const auto& variant : variants) {
     if (video_playlists.empty())
       break;
@@ -550,11 +598,15 @@ void AppendPlaylists(const std::string& default_audio_language,
 MasterPlaylist::MasterPlaylist(const std::filesystem::path& file_name,
                                const std::string& default_audio_language,
                                const std::string& default_text_language,
+                               const std::vector<CeaCaption>& cea608,
+                               const std::vector<CeaCaption>& cea708,
                                bool is_independent_segments,
                                bool create_session_keys)
     : file_name_(file_name),
       default_audio_language_(default_audio_language),
       default_text_language_(default_text_language),
+      cea608_(cea608),
+      cea708_(cea708),
       is_independent_segments_(is_independent_segments),
       create_session_keys_(create_session_keys) {}
 
@@ -587,8 +639,8 @@ bool MasterPlaylist::WriteMasterPlaylist(
       content.append(session_key + "\n");
   }
 
-  AppendPlaylists(default_audio_language_, default_text_language_, base_url,
-                  playlists, &content);
+  AppendPlaylists(default_audio_language_, default_text_language_, cea608_,
+                    cea708_, base_url, playlists, &content);
 
   // Skip if the playlist is already written.
   if (content == written_playlist_)

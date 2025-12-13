@@ -16,6 +16,14 @@ namespace hls {
 
 class MediaPlaylist;
 
+struct CeaCaption {
+  std::string name;
+  std::string language;
+  std::string channel;
+  bool is_default = false;
+  bool autoselect = true;
+};
+
 /// Class to generate HLS Master Playlist.
 /// Methods are virtual for mocking.
 class MasterPlaylist {
@@ -28,6 +36,8 @@ class MasterPlaylist {
   MasterPlaylist(const std::filesystem::path& file_name,
                  const std::string& default_audio_language,
                  const std::string& default_text_language,
+                 const std::vector<CeaCaption>& cea608,
+                 const std::vector<CeaCaption>& cea708,
                  const bool is_independent_segments,
                  const bool create_session_keys = false);
   virtual ~MasterPlaylist();
@@ -53,6 +63,8 @@ class MasterPlaylist {
   const std::filesystem::path file_name_;
   const std::string default_audio_language_;
   const std::string default_text_language_;
+  const std::vector<CeaCaption> cea608_;
+  const std::vector<CeaCaption> cea708_;
   bool is_independent_segments_;
   bool create_session_keys_;
 };

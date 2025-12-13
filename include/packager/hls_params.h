@@ -21,6 +21,20 @@ enum class HlsPlaylistType {
   kLive,
 };
 
+// CEA caption description.
+struct CeaCaption {
+  // The display name of the caption.
+  std::string name;
+  // The language of the caption.
+  std::string language;
+  // The channel of the caption, e.g. "CC1", "SERVICE2".
+  std::string channel;
+  // True if this is the default caption.
+  bool is_default = false;
+  // True if this caption should be autoselected.
+  bool autoselect = true;
+};
+
 /// HLS related parameters.
 struct HlsParams {
   /// HLS playlist type. See HLS specification for details.
@@ -75,6 +89,10 @@ struct HlsParams {
   /// Add EXT-X-PROGRAM-DATE-TIME tag to the playlist. The date time is derived
   /// from the current wall clock.
   bool add_program_date_time = false;
+  /// CEA-608 captions.
+  std::vector<CeaCaption> cea608;
+  /// CEA-708 captions.
+  std::vector<CeaCaption> cea708;
 };
 
 }  // namespace shaka

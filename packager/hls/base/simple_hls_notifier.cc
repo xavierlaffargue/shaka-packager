@@ -16,6 +16,7 @@
 #include <absl/strings/escaping.h>
 #include <absl/strings/numbers.h>
 
+#include <packager/hls/base/master_playlist.h>
 #include <packager/file/file_util.h>
 #include <packager/media/base/protection_system_ids.h>
 #include <packager/media/base/protection_system_specific_info.h>
@@ -285,10 +286,23 @@ SimpleHlsNotifier::SimpleHlsNotifier(const HlsParams& hls_params)
       hls_params.default_text_language.empty()
           ? hls_params.default_language
           : hls_params.default_text_language;
+
+  std::vector<CeaCaption> cea608;
+  for (const auto& caption : hls_params.cea608) {
+    cea608.push_back({caption.name, caption.language, caption.channel,
+                       caption.is_default, caption.autoselect});
+  }
+
+  std::vector<CeaCaption> cea708;
+  for (const auto& caption : hls_params.cea708) {
+    cea708.push_back({caption.name, caption.language, caption.channel,
+                       caption.is_default, caption.autoselect});
+  }
+
   master_playlist_.reset(new MasterPlaylist(
       master_playlist_path.filename(), default_audio_langauge,
-      default_text_language, hls_params.is_independent_segments,
-      hls_params.create_session_keys));
+      default_text_language, cea608, cea708,
+      hls_params.is_independent_segments, hls_params.create_session_keys));
 }
 
 SimpleHlsNotifier::~SimpleHlsNotifier() {}

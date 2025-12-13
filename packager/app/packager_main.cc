@@ -336,6 +336,39 @@ bool ParseProtectionSystems(const std::string& protection_systems_str,
   return true;
 }
 
+bool ParseCeaCaptions(const std::string& captions_str,
+                      std::vector<CeaCaption>* captions) {
+  std::vector<std::string> captions_list =
+      SplitAndTrimSkipEmpty(captions_str, ';');
+  for (const std::string& caption_str : captions_list) {
+    CeaCaption caption;
+    std::vector<KVPair> caption_parts =
+        SplitStringIntoKeyValuePairs(caption_str, '=', ',');
+    for (const auto& part : caption_parts) {
+      if (part.first == "channel") {
+        caption.channel = part.second;
+      } else if (part.first == "lang") {
+        caption.language = part.second;
+      } else if (part.first == "name") {
+        caption.name = part.second;
+      } else if (part.first == "default") {
+        caption.is_default = (part.second == "true");
+      } else if (part.first == "autoselect") {
+        caption.autoselect = (part.second == "true");
+      }
+    }
+    if (caption.channel.empty()) {
+      LOG(ERROR) << "Missing channel in CEA caption: " << caption_str;
+      return false;
+    }
+    if (caption.name.empty()) {
+      caption.name = caption.channel;
+    }
+    captions->push_back(caption);
+  }
+  return true;
+}
+
 std::optional<PackagingParams> GetPackagingParams() {
   PackagingParams packaging_params;
 
@@ -524,6 +557,8 @@ std::optional<PackagingParams> GetPackagingParams() {
   mpd_params.include_mspr_pro =
       absl::GetFlag(FLAGS_include_mspr_pro_for_playready);
   mpd_params.low_latency_dash_mode = absl::GetFlag(FLAGS_low_latency_dash_mode);
+  mpd_params.cea608 = absl::GetFlag(FLAGS_cea608);
+  mpd_params.cea708 = absl::GetFlag(FLAGS_cea708);
 
   HlsParams& hls_params = packaging_params.hls_params;
   if (!GetHlsPlaylistType(absl::GetFlag(FLAGS_hls_playlist_type),
@@ -545,6 +580,15 @@ std::optional<PackagingParams> GetPackagingParams() {
   hls_params.start_time_offset = absl::GetFlag(FLAGS_hls_start_time_offset);
   hls_params.create_session_keys = absl::GetFlag(FLAGS_create_session_keys);
   hls_params.add_program_date_time = absl::GetFlag(FLAGS_add_program_date_time);
+
+  if (!ParseCeaCaptions(absl::GetFlag(FLAGS_cea608), &hls_params.cea608)) {
+    LOG(ERROR) << "Failed to parse --cea608 " << absl::GetFlag(FLAGS_cea608);
+    return std::nullopt;
+  }
+  if (!ParseCeaCaptions(absl::GetFlag(FLAGS_cea708), &hls_params.cea708)) {
+    LOG(ERROR) << "Failed to parse --cea708 " << absl::GetFlag(FLAGS_cea708);
+    return std::nullopt;
+  }
 
   TestParams& test_params = packaging_params.test_params;
   test_params.dump_stream_info = absl::GetFlag(FLAGS_dump_stream_info);
@@ -634,6 +678,7 @@ int PackagerMain(int argc, char** argv) {
     printf("Packaging completed successfully.\n");
   return kSuccess;
 }
+
 
 }  // namespace
 }  // namespace shaka
