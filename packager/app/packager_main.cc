@@ -679,7 +679,6 @@ int PackagerMain(int argc, char** argv) {
   return kSuccess;
 }
 
-
 }  // namespace
 }  // namespace shaka
 

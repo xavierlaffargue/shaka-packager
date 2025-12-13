@@ -170,7 +170,7 @@ std::list<Variant> BuildVariants(
     const std::map<std::string, std::list<const MediaPlaylist*>>& audio_groups,
     const std::map<std::string, std::list<const MediaPlaylist*>>&
         subtitle_groups,
-        const std::list<std::string>& cea_group_ids) {
+    const std::list<std::string>& cea_group_ids) {
   std::list<Variant> audio_variants = AudioGroupsToVariants(audio_groups);
   std::list<Variant> subtitle_variants =
       SubtitleGroupsToVariants(subtitle_groups);
@@ -279,11 +279,9 @@ void BuildStreamInfTag(const MediaPlaylist& playlist,
   }
 
   if (variant.closed_captions_group_id) {
-    tag.AddQuotedString("CLOSED-CAPTIONS",
-                        *variant.closed_captions_group_id);
-  }
-  else {
-      tag.AddString("CLOSED-CAPTIONS", "NONE");
+    tag.AddQuotedString("CLOSED-CAPTIONS", *variant.closed_captions_group_id);
+  } else {
+    tag.AddString("CLOSED-CAPTIONS", "NONE");
   }
 
   if (playlist.stream_type() ==
@@ -640,7 +638,7 @@ bool MasterPlaylist::WriteMasterPlaylist(
   }
 
   AppendPlaylists(default_audio_language_, default_text_language_, cea608_,
-                    cea708_, base_url, playlists, &content);
+                  cea708_, base_url, playlists, &content);
 
   // Skip if the playlist is already written.
   if (content == written_playlist_)

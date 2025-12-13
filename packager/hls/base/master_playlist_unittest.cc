@@ -144,8 +144,8 @@ class MasterPlaylistTest : public ::testing::Test {
       : master_playlist_(new MasterPlaylist(kDefaultMasterPlaylistName,
                                             kDefaultAudioLanguage,
                                             kDefaultTextLanguage,
-                                  {},
-                                  {},
+                                            {},
+                                            {},
                                             !kIsIndependentSegments,
                                             kCreateSessionKeys)),
         test_output_dir_("memory://test_dir"),
@@ -191,13 +191,9 @@ TEST_F(MasterPlaylistTest,
   const uint64_t kMaxBitrate = 435889;
   const uint64_t kAvgBitrate = 235889;
 
-  master_playlist_.reset(new MasterPlaylist(kDefaultMasterPlaylistName,
-                                              kDefaultAudioLanguage,
-                                              kDefaultTextLanguage,
-                                              {},
-                                              {},
-                                              kIsIndependentSegments,
-                                              false));
+  master_playlist_.reset(new MasterPlaylist(
+      kDefaultMasterPlaylistName, kDefaultAudioLanguage, kDefaultTextLanguage,
+      {}, {}, kIsIndependentSegments, false));
 
   std::unique_ptr<MockMediaPlaylist> mock_playlist =
       CreateVideoPlaylist("media1.m3u8", "avc1", kMaxBitrate, kAvgBitrate);
@@ -1073,20 +1069,16 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistWithCea608) {
   std::vector<CeaCaption> cea608;
   cea608.push_back({"fr", "fre", "CC1", true, true});
   cea608.push_back({"en", "eng", "CC2", false, true});
-  master_playlist_.reset(new MasterPlaylist(kDefaultMasterPlaylistName,
-                                            kDefaultAudioLanguage,
-                                            kDefaultTextLanguage,
-                                            cea608,
-                                            {},
-                                            !kIsIndependentSegments,
-                                            false));
+  master_playlist_.reset(new MasterPlaylist(
+      kDefaultMasterPlaylistName, kDefaultAudioLanguage, kDefaultTextLanguage,
+      cea608, {}, !kIsIndependentSegments, false));
 
   std::unique_ptr<MockMediaPlaylist> mock_playlist =
       CreateVideoPlaylist("media1.m3u8", "avc1", kMaxBitrate, kAvgBitrate);
 
   const char kBaseUrl[] = "http://myplaylistdomain.com/";
   EXPECT_TRUE(master_playlist_->WriteMasterPlaylist(kBaseUrl, test_output_dir_,
-                                                   {mock_playlist.get()}));
+                                                    {mock_playlist.get()}));
   std::string actual;
   ASSERT_TRUE(
       File::ReadFileToString(master_playlist_path_.string().c_str(), &actual));

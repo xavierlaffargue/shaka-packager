@@ -43,21 +43,21 @@ ABSL_FLAG(bool,
           "True forces the muxer to order streams in the order given "
           "on the command-line. False uses the previous unordered behavior.");
 ABSL_FLAG(
-          std::string,
-          cea608,
-          "",
-          "Specifies a CEA-608 closed caption channel. Can be specified multiple "
-          "times to specify multiple channels. The value is a comma separated "
-          "list of key-value pairs. Supported keys: channel(CC1|CC2|CC3|CC4), "
-          "name, lang, default(yes|no), autoselect(yes|no). Example: "
-          "--cea608 channel=CC1,name=English,lang=eng");
+    std::string,
+    cea608,
+    "",
+    "Specifies a CEA-608 closed caption channel. Can be specified multiple "
+    "times to specify multiple channels. The value is a comma separated "
+    "list of key-value pairs. Supported keys: channel(CC1|CC2|CC3|CC4), "
+    "name, lang, default(yes|no), autoselect(yes|no). Example: "
+    "--cea608 channel=CC1,name=English,lang=eng");
 ABSL_FLAG(
-          std::string,
-          cea708,
-          "",
-          "Specifies a CEA-708 closed caption channel. Can be specified multiple "
-          "times to specify multiple channels. The value is a comma separated "
-          "list of key-value pairs. Supported keys: "
-          "channel(SERVICE1..SERVICE63), name, lang, default(yes|no), "
-          "autoselect(yes|no). Example: --cea708 "
-          "channel=SERVICE1,name=English,lang=eng");
+    std::string,
+    cea708,
+    "",
+    "Specifies a CEA-708 closed caption channel. Can be specified multiple "
+    "times to specify multiple channels. The value is a comma separated "
+    "list of key-value pairs. Supported keys: "
+    "channel(SERVICE1..SERVICE63), name, lang, default(yes|no), "
+    "autoselect(yes|no). Example: --cea708 "
+    "channel=SERVICE1,name=English,lang=eng");
