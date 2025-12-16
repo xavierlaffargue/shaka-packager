@@ -89,10 +89,8 @@ struct HlsParams {
   /// Add EXT-X-PROGRAM-DATE-TIME tag to the playlist. The date time is derived
   /// from the current wall clock.
   bool add_program_date_time = false;
-  /// CEA-608 captions.
-  std::vector<CeaCaption> cea608;
-  /// CEA-708 captions.
-  std::vector<CeaCaption> cea708;
+  /// CEA-608 / CEA-708 captions.
+  std::vector<CeaCaption> closed_captions;
 };
 
 }  // namespace shaka

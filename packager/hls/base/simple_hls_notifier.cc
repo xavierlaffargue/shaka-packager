@@ -287,21 +287,15 @@ SimpleHlsNotifier::SimpleHlsNotifier(const HlsParams& hls_params)
           ? hls_params.default_language
           : hls_params.default_text_language;
 
-  std::vector<CeaCaption> cea608;
-  for (const auto& caption : hls_params.cea608) {
-    cea608.push_back({caption.name, caption.language, caption.channel,
-                      caption.is_default, caption.autoselect});
-  }
-
-  std::vector<CeaCaption> cea708;
-  for (const auto& caption : hls_params.cea708) {
-    cea708.push_back({caption.name, caption.language, caption.channel,
+  std::vector<CeaCaption> closed_captions;
+  for (const auto& caption : hls_params.closed_captions) {
+    closed_captions.push_back({caption.name, caption.language, caption.channel,
                       caption.is_default, caption.autoselect});
   }
 
   master_playlist_.reset(new MasterPlaylist(
       master_playlist_path.filename(), default_audio_langauge,
-      default_text_language, cea608, cea708, hls_params.is_independent_segments,
+      default_text_language, closed_captions, hls_params.is_independent_segments,
       hls_params.create_session_keys));
 }
 

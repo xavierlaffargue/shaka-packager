@@ -336,7 +336,7 @@ bool ParseProtectionSystems(const std::string& protection_systems_str,
   return true;
 }
 
-bool ParseCeaCaptions(const std::string& captions_str,
+bool ParseClosedCaptions(const std::string& captions_str,
                       std::vector<CeaCaption>* captions) {
   std::vector<std::string> captions_list =
       SplitAndTrimSkipEmpty(captions_str, ';');
@@ -557,8 +557,6 @@ std::optional<PackagingParams> GetPackagingParams() {
   mpd_params.include_mspr_pro =
       absl::GetFlag(FLAGS_include_mspr_pro_for_playready);
   mpd_params.low_latency_dash_mode = absl::GetFlag(FLAGS_low_latency_dash_mode);
-  mpd_params.cea608 = absl::GetFlag(FLAGS_cea608);
-  mpd_params.cea708 = absl::GetFlag(FLAGS_cea708);
 
   HlsParams& hls_params = packaging_params.hls_params;
   if (!GetHlsPlaylistType(absl::GetFlag(FLAGS_hls_playlist_type),
@@ -581,12 +579,8 @@ std::optional<PackagingParams> GetPackagingParams() {
   hls_params.create_session_keys = absl::GetFlag(FLAGS_create_session_keys);
   hls_params.add_program_date_time = absl::GetFlag(FLAGS_add_program_date_time);
 
-  if (!ParseCeaCaptions(absl::GetFlag(FLAGS_cea608), &hls_params.cea608)) {
-    LOG(ERROR) << "Failed to parse --cea608 " << absl::GetFlag(FLAGS_cea608);
-    return std::nullopt;
-  }
-  if (!ParseCeaCaptions(absl::GetFlag(FLAGS_cea708), &hls_params.cea708)) {
-    LOG(ERROR) << "Failed to parse --cea708 " << absl::GetFlag(FLAGS_cea708);
+  if (!ParseClosedCaptions(absl::GetFlag(FLAGS_closed_captions), &hls_params.closed_captions)) {
+    LOG(ERROR) << "Failed to parse --closed_captions " << absl::GetFlag(FLAGS_closed_captions);
     return std::nullopt;
   }
 

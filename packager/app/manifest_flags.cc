@@ -44,25 +44,12 @@ ABSL_FLAG(bool,
           "on the command-line. False uses the previous unordered behavior.");
 ABSL_FLAG(
     std::string,
-    cea608,
+    closed_captions,
     "",
     "Specifies one or more CEA-608 closed caption channels. Multiple channels "
     "can be provided in a single flag, separated by semicolons (;). Each "
     "channel is defined as a comma-separated list of key-value pairs. "
-    "Supported keys: channel(CC1|CC2|CC3|CC4), name, lang, default(yes|no), "
+    "Supported keys: channel(CC1..CC4, SERVICE1..SERVICE63), name, lang, default(yes|no), "
     "autoselect(yes|no). Example: "
-    "--cea608 "
+    "--closed_captions "
     "channel=CC1,name=English,lang=eng;channel=CC2,name=French,lang=fra");
-ABSL_FLAG(
-    std::string,
-    cea708,
-    "",
-    "Specifies one or more CEA-708 closed caption channels. Multiple channels "
-    "can be provided in a single flag, separated by semicolons (;). Each "
-    "channel is defined as a comma-separated list of key-value pairs. "
-    "Supported keys: channel(SERVICE1..SERVICE63), name, lang, "
-    "default(yes|no), "
-    "autoselect(yes|no). Example: "
-    "--cea708 "
-    "channel=SERVICE1,name=English,lang=eng;channel=SERVICE2,name=French,lang="
-    "fra");

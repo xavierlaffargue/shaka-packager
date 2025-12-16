@@ -145,7 +145,6 @@ class MasterPlaylistTest : public ::testing::Test {
                                             kDefaultAudioLanguage,
                                             kDefaultTextLanguage,
                                             {},
-                                            {},
                                             !kIsIndependentSegments,
                                             kCreateSessionKeys)),
         test_output_dir_("memory://test_dir"),
@@ -193,7 +192,7 @@ TEST_F(MasterPlaylistTest,
 
   master_playlist_.reset(new MasterPlaylist(
       kDefaultMasterPlaylistName, kDefaultAudioLanguage, kDefaultTextLanguage,
-      {}, {}, kIsIndependentSegments, false));
+{}, kIsIndependentSegments, false));
 
   std::unique_ptr<MockMediaPlaylist> mock_playlist =
       CreateVideoPlaylist("media1.m3u8", "avc1", kMaxBitrate, kAvgBitrate);
@@ -1062,16 +1061,16 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistAudioOnlyAC4CBI) {
   ASSERT_EQ(expected, actual);
 }
 
-TEST_F(MasterPlaylistTest, WriteMasterPlaylistWithCea608) {
+TEST_F(MasterPlaylistTest, WriteMasterPlaylistWithClosedCaptions) {
   const uint64_t kMaxBitrate = 435889;
   const uint64_t kAvgBitrate = 235889;
 
-  std::vector<CeaCaption> cea608;
-  cea608.push_back({"fr", "fre", "CC1", true, true});
-  cea608.push_back({"en", "eng", "CC2", false, true});
+  std::vector<CeaCaption> closedCaptions;
+  closedCaptions.push_back({"fr", "fre", "CC1", true, true});
+  closedCaptions.push_back({"en", "eng", "CC2", false, true});
   master_playlist_.reset(new MasterPlaylist(
       kDefaultMasterPlaylistName, kDefaultAudioLanguage, kDefaultTextLanguage,
-      cea608, {}, !kIsIndependentSegments, false));
+      closedCaptions, !kIsIndependentSegments, false));
 
   std::unique_ptr<MockMediaPlaylist> mock_playlist =
       CreateVideoPlaylist("media1.m3u8", "avc1", kMaxBitrate, kAvgBitrate);
@@ -1088,16 +1087,16 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistWithCea608) {
       "## Generated with https://github.com/shaka-project/shaka-packager "
       "version test\n"
       "\n"
-      "#EXT-X-MEDIA:TYPE=CLOSED-CAPTIONS,GROUP-ID=\"CC1\",NAME=\"fr\","
+      "#EXT-X-MEDIA:TYPE=CLOSED-CAPTIONS,GROUP-ID=\"CC\",NAME=\"fr\","
       "LANGUAGE=\"fre\",DEFAULT=YES,AUTOSELECT=YES,INSTREAM-ID=\"CC1\"\n"
-      "#EXT-X-MEDIA:TYPE=CLOSED-CAPTIONS,GROUP-ID=\"CC2\",NAME=\"en\","
+      "#EXT-X-MEDIA:TYPE=CLOSED-CAPTIONS,GROUP-ID=\"CC\",NAME=\"en\","
       "LANGUAGE=\"eng\",DEFAULT=NO,AUTOSELECT=YES,INSTREAM-ID=\"CC2\"\n"
       "\n"
       "#EXT-X-STREAM-INF:BANDWIDTH=435889,AVERAGE-BANDWIDTH=235889,"
-      "CODECS=\"avc1\",RESOLUTION=800x600,CLOSED-CAPTIONS=\"CC1\"\n"
+      "CODECS=\"avc1\",RESOLUTION=800x600,CLOSED-CAPTIONS=\"CC\"\n"
       "http://myplaylistdomain.com/media1.m3u8\n\n"
       "#EXT-X-STREAM-INF:BANDWIDTH=435889,AVERAGE-BANDWIDTH=235889,"
-      "CODECS=\"avc1\",RESOLUTION=800x600,CLOSED-CAPTIONS=\"CC2\"\n"
+      "CODECS=\"avc1\",RESOLUTION=800x600,CLOSED-CAPTIONS=\"CC\"\n"
       "http://myplaylistdomain.com/media1.m3u8\n";
 
   ASSERT_EQ(expected, actual);

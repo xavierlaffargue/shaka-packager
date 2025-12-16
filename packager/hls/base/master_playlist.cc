@@ -47,7 +47,7 @@ struct Variant {
   std::set<std::string> text_codecs;
   const std::string* audio_group_id = nullptr;
   const std::string* text_group_id = nullptr;
-  const std::string* closed_captions_group_id = nullptr;
+  bool have_instream_closed_cation = false;
   // The bitrates should be the sum of audio bitrate and text bitrate.
   // However, given the constraints and assumptions, it makes sense to exclude
   // text bitrate out of the calculation:
@@ -170,7 +170,7 @@ std::list<Variant> BuildVariants(
     const std::map<std::string, std::list<const MediaPlaylist*>>& audio_groups,
     const std::map<std::string, std::list<const MediaPlaylist*>>&
         subtitle_groups,
-    const std::list<std::string>& cea_group_ids) {
+        const bool have_instream_closed_caption) {
   std::list<Variant> audio_variants = AudioGroupsToVariants(audio_groups);
   std::list<Variant> subtitle_variants =
       SubtitleGroupsToVariants(subtitle_groups);
@@ -189,15 +189,8 @@ std::list<Variant> BuildVariants(
       base_variant.text_group_id = subtitle_variant.text_group_id;
       base_variant.max_audio_bitrate = audio_variant.max_audio_bitrate;
       base_variant.avg_audio_bitrate = audio_variant.avg_audio_bitrate;
-      if (!cea_group_ids.empty()) {
-        for (const auto& group_id : cea_group_ids) {
-          Variant variant_with_cea = base_variant;
-          variant_with_cea.closed_captions_group_id = &group_id;
-          merged.push_back(variant_with_cea);
-        }
-      } else {
-        merged.push_back(base_variant);
-      }
+      base_variant.have_instream_closed_cation = have_instream_closed_caption;
+      merged.push_back(base_variant);
     }
   }
 
@@ -278,8 +271,8 @@ void BuildStreamInfTag(const MediaPlaylist& playlist,
     tag.AddQuotedString("SUBTITLES", *variant.text_group_id);
   }
 
-  if (variant.closed_captions_group_id) {
-    tag.AddQuotedString("CLOSED-CAPTIONS", *variant.closed_captions_group_id);
+  if (variant.have_instream_closed_cation) {
+    tag.AddQuotedString("CLOSED-CAPTIONS", "CC");
   } else {
     tag.AddString("CLOSED-CAPTIONS", "NONE");
   }
@@ -453,7 +446,7 @@ bool GroupOrderFn(std::pair<std::string, std::list<const MediaPlaylist*>>& a,
 void BuildCeaMediaTag(const CeaCaption& caption, std::string* out) {
   Tag tag("#EXT-X-MEDIA", out);
   tag.AddString("TYPE", "CLOSED-CAPTIONS");
-  tag.AddQuotedString("GROUP-ID", caption.channel);
+  tag.AddQuotedString("GROUP-ID", "CC");
   tag.AddQuotedString("NAME", caption.name);
   if (!caption.language.empty()) {
     tag.AddQuotedString("LANGUAGE", caption.language);
@@ -470,8 +463,7 @@ void BuildCeaMediaTag(const CeaCaption& caption, std::string* out) {
 
 void AppendPlaylists(const std::string& default_audio_language,
                      const std::string& default_text_language,
-                     const std::vector<CeaCaption>& cea608,
-                     const std::vector<CeaCaption>& cea708,
+                     const std::vector<CeaCaption>& closed_captions,
                      const std::string& base_url,
                      const std::list<MediaPlaylist*>& playlists,
                      std::string* content) {
@@ -539,23 +531,15 @@ void AppendPlaylists(const std::string& default_audio_language,
                    content);
   }
 
-  if (!cea608.empty() || !cea708.empty()) {
+  if (!closed_captions.empty()) {
     content->append("\n");
-    for (const auto& caption : cea608) {
-      BuildCeaMediaTag(caption, content);
-    }
-    for (const auto& caption : cea708) {
+    for (const auto& caption : closed_captions) {
       BuildCeaMediaTag(caption, content);
     }
   }
 
-  std::list<std::string> cea_group_ids;
-  for (const auto& caption : cea608)
-    cea_group_ids.push_back(caption.channel);
-  for (const auto& caption : cea708)
-    cea_group_ids.push_back(caption.channel);
   std::list<Variant> variants = BuildVariants(
-      audio_playlist_groups, subtitle_playlist_groups, cea_group_ids);
+      audio_playlist_groups, subtitle_playlist_groups, !closed_captions.empty());
   for (const auto& variant : variants) {
     if (video_playlists.empty())
       break;
@@ -596,15 +580,13 @@ void AppendPlaylists(const std::string& default_audio_language,
 MasterPlaylist::MasterPlaylist(const std::filesystem::path& file_name,
                                const std::string& default_audio_language,
                                const std::string& default_text_language,
-                               const std::vector<CeaCaption>& cea608,
-                               const std::vector<CeaCaption>& cea708,
+                               const std::vector<CeaCaption>& closed_captions,
                                bool is_independent_segments,
                                bool create_session_keys)
     : file_name_(file_name),
       default_audio_language_(default_audio_language),
       default_text_language_(default_text_language),
-      cea608_(cea608),
-      cea708_(cea708),
+      closed_captions_(closed_captions),
       is_independent_segments_(is_independent_segments),
       create_session_keys_(create_session_keys) {}
 
@@ -637,8 +619,8 @@ bool MasterPlaylist::WriteMasterPlaylist(
       content.append(session_key + "\n");
   }
 
-  AppendPlaylists(default_audio_language_, default_text_language_, cea608_,
-                  cea708_, base_url, playlists, &content);
+  AppendPlaylists(default_audio_language_, default_text_language_,
+    closed_captions_, base_url, playlists, &content);
 
   // Skip if the playlist is already written.
   if (content == written_playlist_)
