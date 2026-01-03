@@ -1094,9 +1094,6 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistWithClosedCaptions) {
       "\n"
       "#EXT-X-STREAM-INF:BANDWIDTH=435889,AVERAGE-BANDWIDTH=235889,"
       "CODECS=\"avc1\",RESOLUTION=800x600,CLOSED-CAPTIONS=\"CC\"\n"
-      "http://myplaylistdomain.com/media1.m3u8\n\n"
-      "#EXT-X-STREAM-INF:BANDWIDTH=435889,AVERAGE-BANDWIDTH=235889,"
-      "CODECS=\"avc1\",RESOLUTION=800x600,CLOSED-CAPTIONS=\"CC\"\n"
       "http://myplaylistdomain.com/media1.m3u8\n";
 
   ASSERT_EQ(expected, actual);

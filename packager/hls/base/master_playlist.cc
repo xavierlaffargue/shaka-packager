@@ -457,6 +457,8 @@ void BuildCeaMediaTag(const CeaCaption& caption, std::string* out) {
     tag.AddString("DEFAULT", "NO");
   if (caption.autoselect)
     tag.AddString("AUTOSELECT", "YES");
+  else
+    tag.AddString("AUTOSELECT", "NO");
   tag.AddQuotedString("INSTREAM-ID", caption.channel);
   out->append("\n");
 }

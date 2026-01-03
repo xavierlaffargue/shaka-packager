@@ -352,9 +352,9 @@ bool ParseClosedCaptions(const std::string& captions_str,
       } else if (part.first == "name") {
         caption.name = part.second;
       } else if (part.first == "default") {
-        caption.is_default = (part.second == "true");
+        caption.is_default = (part.second == "yes");
       } else if (part.first == "autoselect") {
-        caption.autoselect = (part.second == "true");
+        caption.autoselect = (part.second == "yes");
       }
     }
     if (caption.channel.empty()) {
