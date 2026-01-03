@@ -290,13 +290,13 @@ SimpleHlsNotifier::SimpleHlsNotifier(const HlsParams& hls_params)
   std::vector<CeaCaption> closed_captions;
   for (const auto& caption : hls_params.closed_captions) {
     closed_captions.push_back({caption.name, caption.language, caption.channel,
-                      caption.is_default, caption.autoselect});
+                               caption.is_default, caption.autoselect});
   }
 
   master_playlist_.reset(new MasterPlaylist(
       master_playlist_path.filename(), default_audio_langauge,
-      default_text_language, closed_captions, hls_params.is_independent_segments,
-      hls_params.create_session_keys));
+      default_text_language, closed_captions,
+      hls_params.is_independent_segments, hls_params.create_session_keys));
 }
 
 SimpleHlsNotifier::~SimpleHlsNotifier() {}

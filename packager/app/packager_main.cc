@@ -337,7 +337,7 @@ bool ParseProtectionSystems(const std::string& protection_systems_str,
 }
 
 bool ParseClosedCaptions(const std::string& captions_str,
-                      std::vector<CeaCaption>* captions) {
+                         std::vector<CeaCaption>* captions) {
   std::vector<std::string> captions_list =
       SplitAndTrimSkipEmpty(captions_str, ';');
   for (const std::string& caption_str : captions_list) {
@@ -579,8 +579,10 @@ std::optional<PackagingParams> GetPackagingParams() {
   hls_params.create_session_keys = absl::GetFlag(FLAGS_create_session_keys);
   hls_params.add_program_date_time = absl::GetFlag(FLAGS_add_program_date_time);
 
-  if (!ParseClosedCaptions(absl::GetFlag(FLAGS_closed_captions), &hls_params.closed_captions)) {
-    LOG(ERROR) << "Failed to parse --closed_captions " << absl::GetFlag(FLAGS_closed_captions);
+  if (!ParseClosedCaptions(absl::GetFlag(FLAGS_closed_captions),
+                           &hls_params.closed_captions)) {
+    LOG(ERROR) << "Failed to parse --closed_captions "
+               << absl::GetFlag(FLAGS_closed_captions);
     return std::nullopt;
   }
 

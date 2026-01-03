@@ -192,7 +192,7 @@ TEST_F(MasterPlaylistTest,
 
   master_playlist_.reset(new MasterPlaylist(
       kDefaultMasterPlaylistName, kDefaultAudioLanguage, kDefaultTextLanguage,
-{}, kIsIndependentSegments, false));
+      {}, kIsIndependentSegments, false));
 
   std::unique_ptr<MockMediaPlaylist> mock_playlist =
       CreateVideoPlaylist("media1.m3u8", "avc1", kMaxBitrate, kAvgBitrate);

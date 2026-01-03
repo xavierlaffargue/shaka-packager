@@ -170,7 +170,7 @@ std::list<Variant> BuildVariants(
     const std::map<std::string, std::list<const MediaPlaylist*>>& audio_groups,
     const std::map<std::string, std::list<const MediaPlaylist*>>&
         subtitle_groups,
-        const bool have_instream_closed_caption) {
+    const bool have_instream_closed_caption) {
   std::list<Variant> audio_variants = AudioGroupsToVariants(audio_groups);
   std::list<Variant> subtitle_variants =
       SubtitleGroupsToVariants(subtitle_groups);
@@ -540,8 +540,9 @@ void AppendPlaylists(const std::string& default_audio_language,
     }
   }
 
-  std::list<Variant> variants = BuildVariants(
-      audio_playlist_groups, subtitle_playlist_groups, !closed_captions.empty());
+  std::list<Variant> variants =
+      BuildVariants(audio_playlist_groups, subtitle_playlist_groups,
+                    !closed_captions.empty());
   for (const auto& variant : variants) {
     if (video_playlists.empty())
       break;
@@ -622,7 +623,7 @@ bool MasterPlaylist::WriteMasterPlaylist(
   }
 
   AppendPlaylists(default_audio_language_, default_text_language_,
-    closed_captions_, base_url, playlists, &content);
+                  closed_captions_, base_url, playlists, &content);
 
   // Skip if the playlist is already written.
   if (content == written_playlist_)
