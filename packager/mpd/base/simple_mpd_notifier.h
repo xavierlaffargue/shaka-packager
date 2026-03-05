@@ -61,6 +61,9 @@ class SimpleMpdNotifier : public MpdNotifier {
   /// @}
 
  private:
+  void AddClosedCaptionsToAdaptationSet(const MediaInfo& media_info,
+                                        AdaptationSet* adaptation_set);
+
   SimpleMpdNotifier(const SimpleMpdNotifier&) = delete;
   SimpleMpdNotifier& operator=(const SimpleMpdNotifier&) = delete;
 

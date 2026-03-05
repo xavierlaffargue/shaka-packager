@@ -22,6 +22,7 @@
 #include <packager/hls/base/media_playlist.h>
 #include <packager/hls/base/tag.h>
 #include <packager/macros/logging.h>
+#include <packager/media/base/language_utils.h>
 #include <packager/version/version.h>
 
 #include "packager/kv_pairs/kv_pairs.h"
@@ -451,7 +452,7 @@ void BuildCeaMediaTag(const CeaCaption& caption, std::string* out) {
   tag.AddQuotedString("GROUP-ID", "CC");
   tag.AddQuotedString("NAME", caption.name);
   if (!caption.language.empty()) {
-    tag.AddQuotedString("LANGUAGE", caption.language);
+    tag.AddQuotedString("LANGUAGE", LanguageToShortestForm(caption.language));
   }
   if (caption.is_default)
     tag.AddString("DEFAULT", "YES");

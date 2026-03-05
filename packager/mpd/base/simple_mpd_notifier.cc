@@ -15,6 +15,7 @@
 #include <packager/mpd/base/mpd_utils.h>
 #include <packager/mpd/base/period.h>
 #include <packager/mpd/base/representation.h>
+#include <packager/media/base/language_utils.h>
 
 namespace shaka {
 
@@ -52,8 +53,10 @@ bool SimpleMpdNotifier::NotifyNewContainer(const MediaInfo& media_info,
   AdaptationSet* adaptation_set = period->GetOrCreateAdaptationSet(
       media_info, content_protection_in_adaptation_set_);
   DCHECK(adaptation_set);
-  if (!adaptation_set->has_id())
+  if (!adaptation_set->has_id()) {
     adaptation_set->set_id(next_adaptation_set_id_++);
+    AddClosedCaptionsToAdaptationSet(media_info, adaptation_set);
+  }
   Representation* representation =
       adaptation_set->AddRepresentation(adjusted_media_info);
   if (!representation)
@@ -157,6 +160,7 @@ bool SimpleMpdNotifier::NotifyCueEvent(uint32_t container_id,
   DCHECK(adaptation_set);
   if (!adaptation_set->has_id()) {
     adaptation_set->set_id(original_adaptation_set->id());
+    AddClosedCaptionsToAdaptationSet(media_info, adaptation_set);
   } else {
     DCHECK_EQ(adaptation_set->id(), original_adaptation_set->id());
   }
@@ -221,6 +225,42 @@ bool SimpleMpdNotifier::NotifyMediaInfoUpdate(uint32_t container_id,
 bool SimpleMpdNotifier::Flush() {
   absl::MutexLock lock(&lock_);
   return WriteMpdToFile(output_path_, mpd_builder_.get());
+}
+
+void SimpleMpdNotifier::AddClosedCaptionsToAdaptationSet(
+    const MediaInfo& media_info,
+    AdaptationSet* adaptation_set) {
+  if (!adaptation_set->IsVideo() ||
+      mpd_options().mpd_params.closed_captions.empty()) {
+    return;
+  }
+  if (media_info.has_video_info() &&
+      media_info.video_info().has_playback_rate()) {
+    return;
+  }
+  std::string cea608_value;
+  std::string cea708_value;
+  for (const auto& caption : mpd_options().mpd_params.closed_captions) {
+    std::string channel = caption.channel;
+    std::string language = LanguageToISO_639_2(caption.language);
+    if (channel.find("CC") == 0) {
+      if (!cea608_value.empty())
+        cea608_value += ";";
+      cea608_value += channel + "=" + language;
+    } else if (channel.find("SERVICE") == 0) {
+      if (!cea708_value.empty())
+        cea708_value += ";";
+      cea708_value += channel.substr(7) + "=lang:" + language;
+    }
+  }
+  if (!cea608_value.empty()) {
+    adaptation_set->AddAccessibility("urn:scte:dash:cc:cea-608:2015",
+                                     cea608_value);
+  }
+  if (!cea708_value.empty()) {
+    adaptation_set->AddAccessibility("urn:scte:dash:cc:cea-708:2015",
+                                     cea708_value);
+  }
 }
 
 }  // namespace shaka

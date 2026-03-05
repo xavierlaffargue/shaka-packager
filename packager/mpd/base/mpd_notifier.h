@@ -162,6 +162,8 @@ class MpdNotifier {
     return mpd_options_.mpd_params.use_segment_list;
   }
 
+  const MpdOptions& mpd_options() const { return mpd_options_; }
+
  private:
   const MpdOptions mpd_options_;
 

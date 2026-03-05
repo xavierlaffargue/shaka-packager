@@ -589,6 +589,7 @@ std::optional<PackagingParams> GetPackagingParams() {
                << absl::GetFlag(FLAGS_closed_captions);
     return std::nullopt;
   }
+  mpd_params.closed_captions = hls_params.closed_captions;
 
   TestParams& test_params = packaging_params.test_params;
   test_params.dump_stream_info = absl::GetFlag(FLAGS_dump_stream_info);
