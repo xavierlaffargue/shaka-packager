@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <packager/hls_params.h>
+#include <packager/cea_caption.h>
 
 namespace shaka {
 
