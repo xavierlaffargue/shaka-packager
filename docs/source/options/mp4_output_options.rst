@@ -17,3 +17,13 @@ MP4 output options
     template).
 
     Default enabled.
+
+--mvex_before_trak
+
+    Android MediaExtractor requires mvex to be written before trak. Set the flag
+    to true to comply with the requirement.
+
+--mp4_reset_initial_composition_offset_to_zero
+
+    MP4 only. If it is true, reset the initial composition offset to zero, i.e.
+    by assuming that there is a missing EditList. Default enabled.

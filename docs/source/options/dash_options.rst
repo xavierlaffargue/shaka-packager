@@ -111,3 +111,42 @@ DASH options
     Optional. Will add Label tag to adapation set and will be taken into
     consideration along with codecs, language, media type (audio, video etc)
     and container type to create different adaptation sets.
+
+--generate_dash_if_iop_compliant_mpd
+
+    Try to generate DASH-IF IOP compliant MPD. This is best effort and does
+    not guarantee compliance. Default enabled.
+
+--include_mspr_pro_for_playready
+
+    If enabled, PlayReady Object <mspr:pro> will be inserted into
+    <ContentProtection ...> element alongside with <cenc:pssh> when using
+    PlayReady protection system. Default enabled.
+
+--dash_force_segment_list
+
+    Uses SegmentList instead of SegmentBase. Use this if the content is huge
+    and the total number of (sub)segment references is greater than what the
+    sidx atom allows (65535). Currently this flag is only supported in DASH
+    ondemand profile.
+
+--use_legacy_vp9_codec_string
+
+    Use legacy vp9 codec string 'vp9' if set to true; otherwise new style
+    vp09.xx.xx.xx... codec string will be used.
+
+--segment_template_constant_duration
+
+    Generates SegmentTemplate@duration if all segments except the last one
+    has the same duration if this flag is set to true.
+
+--dash_add_last_segment_number_when_needed
+
+    Adds a Supplemental Descriptor with @schemeIdUri set to
+    http://dashif.org/guidelines/last-segment-number with the @value set to
+    the last segment number.
+
+--use_dovi_supplemental_codecs
+
+    Set to true to signal DolbyVision using the modern supplemental codecs
+    approach instead of the legacy duplicate representations approach.

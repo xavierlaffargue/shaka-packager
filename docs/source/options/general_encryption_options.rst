@@ -48,3 +48,7 @@ General encryption options
 
     Extra XML data to add to PlayReady PSSH data.  Can be specified even if
     using another key source.
+
+--cencv1
+
+    Use CENC v1 (2012) instead of v3 (2016+) for encryption.

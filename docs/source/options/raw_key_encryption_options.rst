@@ -42,3 +42,19 @@ Raw key encryption options
     One or more concatenated PSSH boxes in hex string format. If neither this
     flag nor --protection_systems is specified, a
     `v1 common PSSH box <https://goo.gl/s8RIhr>`_ will be generated.
+
+--enable_fixed_key_encryption
+
+    Same as --enable_raw_key_encryption. Will be deprecated.
+
+--enable_fixed_key_decryption
+
+    Same as --enable_raw_key_decryption. Will be deprecated.
+
+--key_id <hex>
+
+    Key id in hex string format. Will be deprecated. Use --keys.
+
+--key <hex>
+
+    Key in hex string format. Will be deprecated. Use --keys.

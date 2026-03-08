@@ -98,3 +98,17 @@ HLS options
 
     Playback of Offline HLS assets shall use EXT-X-SESSION-KEY to declare all 
     eligible content keys in the master playlist.
+
+--add_program_date_time
+
+    Add EXT-X-PROGRAM-DATE-TIME tag to the playlist. The date time is derived
+    from the current wall clock time.
+
+--per_playlist_target_duration
+
+    If true, TARGETDURATION will be calculated locally in MediaPlaylist.
+
+--enable_legacy_widevine_hls_signaling
+
+    Specifies whether Legacy Widevine HLS, i.e. v1 is signalled in the media
+    playlist. Applies to Widevine protection system in HLS with SAMPLE-AES only.

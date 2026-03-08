@@ -37,16 +37,38 @@ Synopsis
     $ packager <stream_descriptor> ... \
                [--dump_stream_info] \
                [--quiet] \
+               [--single_threaded] \
                [Chunking Options] \
+               [Muxer Options] \
+               [Network Options] \
                [MP4 Output Options] \
                [encryption / decryption options] \
                [DASH options] \
                [HLS options] \
                [Ads options]
 
+General options
+---------------
+
+--dump_stream_info
+
+    Dump demuxed stream info.
+
+--quiet
+
+    When enabled, LOG(INFO) output is suppressed.
+
+--single_threaded
+
+    If enabled, only use one thread when generating content.
+
 .. include:: /options/stream_descriptors.rst
 
 .. include:: /options/chunking_options.rst
+
+.. include:: /options/muxer_options.rst
+
+.. include:: /options/network_options.rst
 
 .. include:: /options/mp4_output_options.rst
 

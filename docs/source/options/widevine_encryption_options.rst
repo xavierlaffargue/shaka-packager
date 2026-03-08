@@ -74,3 +74,7 @@ Widevine encryption options
 --group_id <hex>
 
     Identifier for a group of licenses.
+
+--video_feature <string>
+
+    Specify the optional video feature, e.g. HDR.
