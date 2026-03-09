@@ -18,7 +18,6 @@ DASH specific stream descriptor fields
 
     See DASH (ISO/IEC 23009-1) specification for details.
 
---closed_captions <closed_caption_configs>
 :closed_captions:
 
     Specifies one or more CEA-608 closed caption channels. Multiple channels
