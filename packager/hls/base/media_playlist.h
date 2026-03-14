@@ -78,14 +78,18 @@ class MediaPlaylist {
                 const std::string& group_id);
   virtual ~MediaPlaylist();
 
-  const std::string& file_name() const { return file_name_; }
-  const std::string& name() const { return name_; }
-  const std::string& group_id() const { return group_id_; }
-  MediaPlaylistStreamType stream_type() const { return stream_type_; }
-  const std::string& codec() const { return codec_; }
-  const std::string& supplemental_codec() const { return supplemental_codec_; }
-  const media::FourCC& compatible_brand() const { return compatible_brand_; }
-  const std::list<std::unique_ptr<HlsEntry>>& entries() const {
+  virtual const std::string& file_name() const { return file_name_; }
+  virtual const std::string& name() const { return name_; }
+  virtual const std::string& group_id() const { return group_id_; }
+  virtual MediaPlaylistStreamType stream_type() const { return stream_type_; }
+  virtual const std::string& codec() const { return codec_; }
+  virtual const std::string& supplemental_codec() const {
+    return supplemental_codec_;
+  }
+  virtual const media::FourCC& compatible_brand() const {
+    return compatible_brand_;
+  }
+  virtual const std::list<std::unique_ptr<HlsEntry>>& entries() const {
     return entries_;
   }
 
@@ -118,7 +122,7 @@ class MediaPlaylist {
   ///        to this playlist.
   /// @return true on success, false otherwise.
   virtual bool SetMediaInfo(const MediaInfo& media_info);
-  MediaInfo GetMediaInfo() const { return media_info_; }
+  virtual MediaInfo GetMediaInfo() const { return media_info_; }
 
   /// Set the sample duration. Sample duration is used to generate frame rate.
   /// Sample duration is not available right away especially. This allows
@@ -240,15 +244,15 @@ class MediaPlaylist {
 
   /// @return the language of the media, as an ISO language tag in its shortest
   ///         form.  May be an empty string for video.
-  const std::string& language() const { return language_; }
+  virtual const std::string& language() const { return language_; }
 
-  const std::vector<std::string>& characteristics() const {
+  virtual const std::vector<std::string>& characteristics() const {
     return characteristics_;
   }
 
-  bool forced_subtitle() const { return forced_subtitle_; }
+  virtual bool forced_subtitle() const { return forced_subtitle_; }
 
-  bool is_dvs() const {
+  virtual bool is_dvs() const {
     // HLS Authoring Specification for Apple Devices
     // https://developer.apple.com/documentation/http_live_streaming/hls_authoring_specification_for_apple_devices#overview
     // Section 2.12.
@@ -256,6 +260,14 @@ class MediaPlaylist {
     return characteristics_.size() == 1 &&
            characteristics_[0] == DVS_CHARACTERISTICS;
   }
+
+ protected:
+  std::string codec_;
+  std::string supplemental_codec_;
+  media::FourCC compatible_brand_;
+  std::string language_;
+  std::vector<std::string> characteristics_;
+  MediaInfo media_info_;
 
  private:
   // Add a SegmentInfoEntry (#EXTINF).
@@ -280,15 +292,9 @@ class MediaPlaylist {
   const std::string file_name_;
   const std::string name_;
   const std::string group_id_;
-  MediaInfo media_info_;
   MediaPlaylistStreamType stream_type_ = MediaPlaylistStreamType::kUnknown;
   // Whether to use byte range for SegmentInfoEntry.
   bool use_byte_range_ = false;
-  std::string codec_;
-  std::string supplemental_codec_;
-  media::FourCC compatible_brand_;
-  std::string language_;
-  std::vector<std::string> characteristics_;
   bool forced_subtitle_ = false;
   uint32_t media_sequence_number_ = 0;
   bool inserted_discontinuity_tag_ = false;

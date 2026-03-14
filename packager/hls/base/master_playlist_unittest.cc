@@ -185,6 +185,93 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistOneVideo) {
   ASSERT_EQ(expected, actual);
 }
 
+TEST_F(MasterPlaylistTest, AudioOrderRespectsIndexInSameGroup) {
+  const std::string fr_lang = "fr";
+  const std::string audiocodec = "audiocodec";
+  const std::string sdvideocodec = "sdvideocodec";
+  const std::vector<std::string> dv_chars = {
+      "public.accessibility.describes-video"};
+
+  // Video
+  std::unique_ptr<MockMediaPlaylist> video =
+      CreateVideoPlaylist("sd.m3u8", sdvideocodec, 300000, 200000);
+  EXPECT_CALL(*video, codec()).WillRepeatedly(ReturnRef(sdvideocodec));
+
+  // Audio 1: French Standard. Force index 1.
+  MediaInfo standard_info;
+  standard_info.set_index(1);
+  std::unique_ptr<MockMediaPlaylist> audio_std(
+      new MockMediaPlaylist("audio_fr.m3u8", "Français", "audiogroup"));
+  audio_std->SetStreamTypeForTesting(
+      MediaPlaylist::MediaPlaylistStreamType::kAudio);
+  audio_std->SetLanguageForTesting(fr_lang);
+  EXPECT_CALL(*audio_std, codec()).WillRepeatedly(ReturnRef(audiocodec));
+  audio_std->SetMediaInfo(standard_info);
+  EXPECT_CALL(*audio_std, MaxBitrate()).WillRepeatedly(Return(50000));
+  EXPECT_CALL(*audio_std, AvgBitrate()).WillRepeatedly(Return(30000));
+  EXPECT_CALL(*audio_std, GetNumChannels()).WillRepeatedly(Return(2));
+  EXPECT_CALL(*audio_std, GetEC3JocComplexity()).WillRepeatedly(Return(0));
+  EXPECT_CALL(*audio_std, GetAC4ImsFlag()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*audio_std, GetAC4CbiFlag()).WillRepeatedly(Return(false));
+
+  // Audio 2: French DV. Force index 2.
+  MediaInfo dv_info;
+  dv_info.set_index(2);
+  std::unique_ptr<MockMediaPlaylist> audio_dv(
+      new MockMediaPlaylist("audio_fr_dv.m3u8", "Français DV", "audiogroup"));
+  audio_dv->SetStreamTypeForTesting(
+      MediaPlaylist::MediaPlaylistStreamType::kAudio);
+  audio_dv->SetLanguageForTesting(fr_lang);
+  EXPECT_CALL(*audio_dv, codec()).WillRepeatedly(ReturnRef(audiocodec));
+  audio_dv->SetCharacteristicsForTesting(dv_chars);
+  audio_dv->SetMediaInfo(dv_info);
+  EXPECT_CALL(*audio_dv, MaxBitrate()).WillRepeatedly(Return(50000));
+  EXPECT_CALL(*audio_dv, AvgBitrate()).WillRepeatedly(Return(30000));
+  EXPECT_CALL(*audio_dv, GetNumChannels()).WillRepeatedly(Return(2));
+  EXPECT_CALL(*audio_dv, GetEC3JocComplexity()).WillRepeatedly(Return(0));
+  EXPECT_CALL(*audio_dv, GetAC4ImsFlag()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*audio_dv, GetAC4CbiFlag()).WillRepeatedly(Return(false));
+
+  // Change master playlist default language to French to test DEFAULT=YES
+  master_playlist_.reset(new MasterPlaylist(kDefaultMasterPlaylistName,
+                                            "fr",
+                                            kDefaultTextLanguage,
+                                            {},
+                                            !kIsIndependentSegments,
+                                            false));
+
+  const char kBaseUrl[] = "http://playlists.org/";
+  // Even if we pass them in "wrong" order (DV first), they should be sorted by index.
+  EXPECT_TRUE(master_playlist_->WriteMasterPlaylist(
+      kBaseUrl, test_output_dir_, {video.get(), audio_dv.get(), audio_std.get()}));
+
+  std::string actual;
+  ASSERT_TRUE(
+      File::ReadFileToString(master_playlist_path_.string().c_str(), &actual));
+
+  // Standard (index 1) should be first and DEFAULT=YES.
+  // DV (index 2) should be second and DEFAULT=NO.
+  const std::string expected =
+      "#EXTM3U\n"
+      "## Generated with https://github.com/shaka-project/shaka-packager "
+      "version test\n"
+      "\n"
+      "#EXT-X-MEDIA:TYPE=AUDIO,URI=\"http://playlists.org/audio_fr.m3u8\","
+      "GROUP-ID=\"audiogroup\",LANGUAGE=\"fr\",NAME=\"Français\","
+      "DEFAULT=YES,AUTOSELECT=YES,CHANNELS=\"2\"\n"
+      "#EXT-X-MEDIA:TYPE=AUDIO,URI=\"http://playlists.org/audio_fr_dv.m3u8\","
+      "GROUP-ID=\"audiogroup\",LANGUAGE=\"fr\",NAME=\"Français DV\",DEFAULT=NO,"
+      "AUTOSELECT=YES,CHARACTERISTICS=\"public.accessibility.describes-video\","
+      "CHANNELS=\"2\"\n"
+      "\n"
+      "#EXT-X-STREAM-INF:BANDWIDTH=350000,AVERAGE-BANDWIDTH=230000,"
+      "CODECS=\"sdvideocodec,audiocodec\",RESOLUTION=800x600,"
+      "AUDIO=\"audiogroup\",CLOSED-CAPTIONS=NONE\n"
+      "http://playlists.org/sd.m3u8\n";
+
+  ASSERT_EQ(expected, actual);
+}
+
 TEST_F(MasterPlaylistTest, 
        WriteMasterPlaylistOneVideoWithIndependentSegments) {
   const uint64_t kMaxBitrate = 435889;
@@ -333,14 +420,14 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistVideoAndAudio) {
       "GROUP-ID=\"audiogroup\",LANGUAGE=\"es\",NAME=\"espanol\","
       "DEFAULT=NO,AUTOSELECT=YES,CHANNELS=\"5\"\n"
       "\n"
-      "#EXT-X-STREAM-INF:BANDWIDTH=360000,AVERAGE-BANDWIDTH=240000,"
-      "CODECS=\"sdvideocodec,audiocodec\","
-      "RESOLUTION=800x600,AUDIO=\"audiogroup\",CLOSED-CAPTIONS=NONE\n"
-      "http://playlists.org/sd.m3u8\n"
       "#EXT-X-STREAM-INF:BANDWIDTH=760000,AVERAGE-BANDWIDTH=440000,"
       "CODECS=\"hdvideocodec,audiocodec\","
       "RESOLUTION=800x600,AUDIO=\"audiogroup\",CLOSED-CAPTIONS=NONE\n"
-      "http://playlists.org/hd.m3u8\n";
+      "http://playlists.org/hd.m3u8\n"
+      "#EXT-X-STREAM-INF:BANDWIDTH=360000,AVERAGE-BANDWIDTH=240000,"
+      "CODECS=\"sdvideocodec,audiocodec\","
+      "RESOLUTION=800x600,AUDIO=\"audiogroup\",CLOSED-CAPTIONS=NONE\n"
+      "http://playlists.org/sd.m3u8\n";
 
   ASSERT_EQ(expected, actual);
 }
@@ -435,12 +522,12 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistSameAudioGroupSameLanguage) {
       "## Generated with https://github.com/shaka-project/shaka-packager "
       "version test\n"
       "\n"
-      "#EXT-X-MEDIA:TYPE=AUDIO,URI=\"http://anydomain.com/eng_lo.m3u8\","
-      "GROUP-ID=\"audio\",LANGUAGE=\"en\",NAME=\"english\","
-      "DEFAULT=YES,AUTOSELECT=YES,CHANNELS=\"1\"\n"
       "#EXT-X-MEDIA:TYPE=AUDIO,URI=\"http://anydomain.com/eng_hi.m3u8\","
+      "GROUP-ID=\"audio\",LANGUAGE=\"en\",NAME=\"english\","
+      "DEFAULT=YES,AUTOSELECT=YES,CHANNELS=\"8\"\n"
+      "#EXT-X-MEDIA:TYPE=AUDIO,URI=\"http://anydomain.com/eng_lo.m3u8\","
       "GROUP-ID=\"audio\",LANGUAGE=\"en\",NAME=\"english\",DEFAULT=NO,"
-      "CHANNELS=\"8\"\n"
+      "CHANNELS=\"1\"\n"
       "\n"
       "#EXT-X-STREAM-INF:BANDWIDTH=400000,AVERAGE-BANDWIDTH=280000,"
       "CODECS=\"videocodec,audiocodec\",RESOLUTION=800x600,AUDIO=\"audio\","
@@ -488,14 +575,14 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistVideosAndTexts) {
       "GROUP-ID=\"textgroup\",LANGUAGE=\"fr\",NAME=\"french\",DEFAULT=YES,"
       "AUTOSELECT=YES\n"
       "\n"
-      "#EXT-X-STREAM-INF:BANDWIDTH=300000,AVERAGE-BANDWIDTH=200000,"
-      "CODECS=\"sdvideocodec,textcodec\",RESOLUTION=800x600,"
-      "SUBTITLES=\"textgroup\",CLOSED-CAPTIONS=NONE\n"
-      "http://playlists.org/sd.m3u8\n"
       "#EXT-X-STREAM-INF:BANDWIDTH=600000,AVERAGE-BANDWIDTH=500000,"
       "CODECS=\"sdvideocodec,textcodec\",RESOLUTION=800x600,"
       "SUBTITLES=\"textgroup\",CLOSED-CAPTIONS=NONE\n"
-      "http://playlists.org/hd.m3u8\n";
+      "http://playlists.org/hd.m3u8\n"
+      "#EXT-X-STREAM-INF:BANDWIDTH=300000,AVERAGE-BANDWIDTH=200000,"
+      "CODECS=\"sdvideocodec,textcodec\",RESOLUTION=800x600,"
+      "SUBTITLES=\"textgroup\",CLOSED-CAPTIONS=NONE\n"
+      "http://playlists.org/sd.m3u8\n";
 
   ASSERT_EQ(expected, actual);
 }
@@ -567,13 +654,13 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistVideoAndDvsAudio) {
       "## Generated with https://github.com/shaka-project/shaka-packager "
       "version test\n"
       "\n"
+      "#EXT-X-MEDIA:TYPE=AUDIO,URI=\"http://playlists.org/eng.m3u8\","
+      "GROUP-ID=\"audiogroup\",LANGUAGE=\"en\",NAME=\"english\","
+      "DEFAULT=YES,AUTOSELECT=YES,CHANNELS=\"2\"\n"
       "#EXT-X-MEDIA:TYPE=AUDIO,URI=\"http://playlists.org/dvs_eng.m3u8\","
       "GROUP-ID=\"audiogroup\",LANGUAGE=\"en\",NAME=\"DVS english\",DEFAULT=NO,"
       "AUTOSELECT=YES,CHARACTERISTICS=\"public.accessibility.describes-video\","
       "CHANNELS=\"2\"\n"
-      "#EXT-X-MEDIA:TYPE=AUDIO,URI=\"http://playlists.org/eng.m3u8\","
-      "GROUP-ID=\"audiogroup\",LANGUAGE=\"en\",NAME=\"english\","
-      "DEFAULT=YES,AUTOSELECT=YES,CHANNELS=\"2\"\n"
       "\n"
       "#EXT-X-STREAM-INF:BANDWIDTH=350000,AVERAGE-BANDWIDTH=230000,"
       "CODECS=\"sdvideocodec,audiocodec\",RESOLUTION=800x600,"

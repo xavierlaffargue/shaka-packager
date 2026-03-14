@@ -380,7 +380,8 @@ void BuildMediaTag(const MediaPlaylist& playlist,
 }
 
 void BuildMediaTags(
-    std::list<std::pair<std::string, std::list<const MediaPlaylist*>>>& groups,
+    const std::list<std::pair<std::string, std::list<const MediaPlaylist*>>>&
+        groups,
     const std::string& default_language,
     const std::string& base_url,
     std::string* out) {
@@ -400,23 +401,22 @@ void BuildMediaTags(
     // 'AUTOSELECT'; it is tagged with 'DEFAULT' too if the language matches
     // |default_language_|.
     std::set<std::string> languages;
+    bool has_default = false;
 
     for (const auto& playlist : playlists) {
       bool is_default = false;
       bool is_autoselect = false;
 
       if (playlist->is_dvs()) {
-        // According to HLS Authoring Specification for Apple Devices
-        // https://developer.apple.com/documentation/http_live_streaming/hls_authoring_specification_for_apple_devices#overview
-        // section 2.13 If you provide DVS, the AUTOSELECT attribute MUST have
-        //              a value of "YES".
         is_autoselect = true;
       } else {
         const std::string language = playlist->language();
         if (languages.find(language) == languages.end()) {
-          is_default = !language.empty() && language == default_language;
+          if (!has_default && !language.empty() && language == default_language) {
+            is_default = true;
+            has_default = true;
+          }
           is_autoselect = true;
-
           languages.insert(language);
         }
       }
@@ -433,16 +433,42 @@ void BuildMediaTags(
   }
 }
 
-bool ListOrderFn(const MediaPlaylist*& a, const MediaPlaylist*& b) {
-  return a->GetMediaInfo().index() < b->GetMediaInfo().index();
+bool ListOrderFn(const MediaPlaylist* a, const MediaPlaylist* b) {
+  const bool a_has_index = a->GetMediaInfo().has_index();
+  const bool b_has_index = b->GetMediaInfo().has_index();
+
+  if (a_has_index && b_has_index) {
+    if (a->GetMediaInfo().index() != b->GetMediaInfo().index()) {
+      return a->GetMediaInfo().index() < b->GetMediaInfo().index();
+    }
+  } else if (a_has_index) {
+    return true;
+  } else if (b_has_index) {
+    return false;
+  }
+
+  // If indices are same or both missing, prefer non-DVS tracks.
+  if (a->is_dvs() != b->is_dvs()) {
+    return !a->is_dvs();
+  }
+
+  return a->file_name() < b->file_name();
 }
 
-bool GroupOrderFn(std::pair<std::string, std::list<const MediaPlaylist*>>& a,
-                  std::pair<std::string, std::list<const MediaPlaylist*>>& b) {
-  a.second.sort(ListOrderFn);
-  b.second.sort(ListOrderFn);
-  return a.second.front()->GetMediaInfo().index() <
-         b.second.front()->GetMediaInfo().index();
+bool GroupOrderFn(
+    const std::pair<std::string, std::list<const MediaPlaylist*>>& a,
+    const std::pair<std::string, std::list<const MediaPlaylist*>>& b) {
+  DCHECK(!a.second.empty());
+  DCHECK(!b.second.empty());
+
+  if (ListOrderFn(a.second.front(), b.second.front())) {
+    return true;
+  }
+  if (ListOrderFn(b.second.front(), a.second.front())) {
+    return false;
+  }
+
+  return a.first < b.first;
 }
 
 void BuildCeaMediaTag(const CeaCaption& caption, std::string* out) {
@@ -477,11 +503,7 @@ void AppendPlaylists(const std::string& default_audio_language,
   std::list<const MediaPlaylist*> video_playlists;
   std::list<const MediaPlaylist*> iframe_playlists;
 
-  bool has_index = true;
-
   for (const MediaPlaylist* playlist : playlists) {
-    has_index = has_index && playlist->GetMediaInfo().has_index();
-
     switch (playlist->stream_type()) {
       case MediaPlaylist::MediaPlaylistStreamType::kAudio:
         audio_playlist_groups[GetGroupId(*playlist)].push_back(playlist);
@@ -508,20 +530,19 @@ void AppendPlaylists(const std::string& default_audio_language,
   std::list<std::pair<std::string, std::list<const MediaPlaylist*>>>
       subtitle_groups_list(subtitle_playlist_groups.begin(),
                            subtitle_playlist_groups.end());
-  if (has_index) {
-    audio_groups_list.sort(GroupOrderFn);
-    for (const auto& group : audio_groups_list) {
-      std::list<const MediaPlaylist*> group_playlists = group.second;
-      group_playlists.sort(ListOrderFn);
-    }
-    subtitle_groups_list.sort(GroupOrderFn);
-    for (const auto& group : subtitle_groups_list) {
-      std::list<const MediaPlaylist*> group_playlists = group.second;
-      group_playlists.sort(ListOrderFn);
-    }
-    video_playlists.sort(ListOrderFn);
-    iframe_playlists.sort(ListOrderFn);
+
+  for (auto& group : audio_groups_list) {
+    group.second.sort(ListOrderFn);
   }
+  audio_groups_list.sort(GroupOrderFn);
+
+  for (auto& group : subtitle_groups_list) {
+    group.second.sort(ListOrderFn);
+  }
+  subtitle_groups_list.sort(GroupOrderFn);
+
+  video_playlists.sort(ListOrderFn);
+  iframe_playlists.sort(ListOrderFn);
 
   if (!audio_playlist_groups.empty()) {
     content->append("\n");
