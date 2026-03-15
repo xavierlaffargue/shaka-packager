@@ -6,10 +6,7 @@
 
 #include <packager/media/base/cc_stream_filter.h>
 
-#include <absl/log/log.h>
-
 #include <packager/media/base/stream_info.h>
-#include <packager/media/base/text_sample.h>
 #include <packager/media/base/text_stream_info.h>
 
 namespace shaka {
@@ -24,22 +21,10 @@ Status CcStreamFilter::InitializeInternal() {
 
 Status CcStreamFilter::Process(std::unique_ptr<StreamData> stream_data) {
   if (stream_data->stream_data_type == StreamDataType::kTextSample) {
-    auto role = stream_data->text_sample->role();
-    auto sub_index = stream_data->text_sample->sub_stream_index();
-    DVLOG(2) << "CcStreamFilter: role=" << static_cast<int>(role)
-             << " sub_stream_index=" << sub_index << " cc_index=" << cc_index_;
-
-    // Always pass through MediaHeartBeat samples regardless of cc_index
-    // They are timing markers needed for all pages to generate segments
-    // correctly
-    if (stream_data->text_sample->role() != TextSampleRole::kMediaHeartBeat &&
-        stream_data->text_sample->sub_stream_index() != -1 &&
+    if (stream_data->text_sample->sub_stream_index() != -1 &&
         stream_data->text_sample->sub_stream_index() != cc_index_) {
-      DVLOG(2) << "CcStreamFilter: FILTERING OUT sample (non-heartbeat, "
-                  "sub_index mismatch)";
       return Status::OK;
     }
-    DVLOG(2) << "CcStreamFilter: PASSING THROUGH sample";
   } else if (stream_data->stream_data_type == StreamDataType::kStreamInfo) {
     if (stream_data->stream_info->stream_type() == kStreamText) {
       // Overwrite the per-input-stream language with our per-output-stream

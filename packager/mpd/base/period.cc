@@ -8,7 +8,6 @@
 
 #include <absl/log/check.h>
 #include <absl/log/log.h>
-#include <absl/strings/match.h>
 
 #include <packager/mpd/base/adaptation_set.h>
 #include <packager/mpd/base/mpd_options.h>
@@ -158,14 +157,11 @@ std::optional<xml::XmlNode> Period::GetXml(bool output_period_duration) {
   }
 
   // Iterate thru AdaptationSets and add them to one big Period element.
-  // We only assign IDs to AdaptationSets that don't have one yet.
-  // This is important for multi-period MPDs where AdaptationSets should
-  // have consistent IDs across periods, and SimpleMpdNotifier already
-  // manages these IDs.
+  // Also force AdaptationSets Id to incremental order, which might not
+  // be the case if force_cl_index is used.
   int idx = 0;
   for (auto& adaptation_set : adaptation_sets_) {
-    if (!adaptation_set->has_id())
-      adaptation_set->set_id(idx++);
+    adaptation_set->set_id(idx++);
   }
 
   for (const auto& adaptation_set : adaptation_sets_) {
@@ -317,22 +313,6 @@ bool Period::SetNewAdaptationSetAttributes(
       media_info.has_protected_content()) {
     new_adaptation_set->set_protected_content(media_info);
     AddContentProtectionElements(media_info, new_adaptation_set);
-  }
-
-  if (media_info.has_video_info() &&
-      !media_info.video_info().has_playback_rate()) {
-    for (const auto& caption : mpd_options_.mpd_params.closed_captions) {
-      if (absl::StartsWith(caption.channel, "CC")) {
-        new_adaptation_set->AddAccessibility(
-            "urn:scte:dash:cc:cea-608:2015",
-            caption.channel + "=" + caption.language);
-      } else if (absl::StartsWith(caption.channel, "SERVICE")) {
-        std::string service_number = caption.channel.substr(7);
-        new_adaptation_set->AddAccessibility(
-            "urn:scte:dash:cc:cea-708:2015",
-            service_number + "=lang:" + caption.language);
-      }
-    }
   }
 
   return true;

@@ -358,7 +358,7 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistOneIframePlaylist) {
       "version test\n"
       "\n"
       "#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=435889,AVERAGE-BANDWIDTH=235889,"
-      "CODECS=\"avc1\",RESOLUTION=800x600,"
+      "CODECS=\"avc1\",RESOLUTION=800x600,CLOSED-CAPTIONS=NONE,"
       "URI=\"http://myplaylistdomain.com/media1.m3u8\"\n";
 
   ASSERT_EQ(expected, actual);
@@ -877,10 +877,10 @@ TEST_F(MasterPlaylistTest, WriteMasterPlaylistMixedPlaylistsDifferentGroups) {
       "http://playlists.org/video-2.m3u8\n"
       "\n"
       "#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=100000,AVERAGE-BANDWIDTH=80000,"
-      "CODECS=\"sdvideocodec\",RESOLUTION=800x600,"
+      "CODECS=\"sdvideocodec\",RESOLUTION=800x600,CLOSED-CAPTIONS=NONE,"
       "URI=\"http://playlists.org/iframe-1.m3u8\"\n"
       "#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=100000,AVERAGE-BANDWIDTH=80000,"
-      "CODECS=\"sdvideocodec\",RESOLUTION=800x600,"
+      "CODECS=\"sdvideocodec\",RESOLUTION=800x600,CLOSED-CAPTIONS=NONE,"
       "URI=\"http://playlists.org/iframe-2.m3u8\"\n";
 
   ASSERT_EQ(expected, actual);

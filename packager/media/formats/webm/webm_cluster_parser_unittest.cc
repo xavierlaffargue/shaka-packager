@@ -143,14 +143,12 @@ const BlockInfo kDefaultBlockInfo[] = {
 };
 
 const uint8_t kEncryptedFrame[] = {
-    // clang-format off
     // Block is encrypted
     0x01,
     // IV
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
     // Some dummy encrypted data
     0x01,
-    // clang-format on
 };
 const uint8_t kMockKey[] = {
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -161,12 +159,10 @@ const uint8_t kExpectedDecryptedFrame[] = {
 };
 
 const uint8_t kClearFrameInEncryptedTrack[] = {
-    // clang-format off
     // Block is not encrypted
     0x00,
     // Some dummy frame data
     0x01, 0x02, 0x03,
-    // clang-format on
 };
 const uint8_t kExpectedClearFrame[] = {
     0x01, 0x02, 0x03,
@@ -660,18 +656,16 @@ TEST_F(WebMClusterParserTest, ParseBlockGroup) {
   int block_count = std::size(kBlockInfo);
 
   const uint8_t kClusterData[] = {
-      // clang-format off
-      0x1F, 0x43, 0xB6, 0x75, 0x9B,  // Cluster(size=27)
-      0xE7, 0x81, 0x00,  // Timecode(size=1, value=0)
-      // BlockGroup with BlockDuration before Block.
-      0xA0, 0x8A,  // BlockGroup(size=10)
-      0x9B, 0x81, 0x17,  // BlockDuration(size=1, value=23)
-      0xA1, 0x85, 0x81, 0x00, 0x00, 0x00, 0xaa,  // Block(size=5, track=1, ts=0)
-      // BlockGroup with BlockDuration after Block.
-      0xA0, 0x8A,  // BlockGroup(size=10)
-      0xA1, 0x85, 0x82, 0x00, 0x21, 0x00, 0x55,  // Block(size=5, track=2, ts=33)
-      0x9B, 0x81, 0x22,  // BlockDuration(size=1, value=34)
-      // clang-format on
+    0x1F, 0x43, 0xB6, 0x75, 0x9B,  // Cluster(size=27)
+    0xE7, 0x81, 0x00,  // Timecode(size=1, value=0)
+    // BlockGroup with BlockDuration before Block.
+    0xA0, 0x8A,  // BlockGroup(size=10)
+    0x9B, 0x81, 0x17,  // BlockDuration(size=1, value=23)
+    0xA1, 0x85, 0x81, 0x00, 0x00, 0x00, 0xaa,  // Block(size=5, track=1, ts=0)
+    // BlockGroup with BlockDuration after Block.
+    0xA0, 0x8A,  // BlockGroup(size=10)
+    0xA1, 0x85, 0x82, 0x00, 0x21, 0x00, 0x55,  // Block(size=5, track=2, ts=33)
+    0x9B, 0x81, 0x22,  // BlockDuration(size=1, value=34)
   };
   const int kClusterSize = std::size(kClusterData);
 
@@ -927,9 +921,7 @@ TEST_F(WebMClusterParserTest, ParseClearFrameInEncryptedTrack) {
 
 TEST_F(WebMClusterParserTest, ParseInvalidZeroSizedCluster) {
   const uint8_t kBuffer[] = {
-      // clang-format off
-      0x1F, 0x43, 0xB6, 0x75, 0x80,  // CLUSTER (size = 0)
-      // clang-format on
+    0x1F, 0x43, 0xB6, 0x75, 0x80,  // CLUSTER (size = 0)
   };
 
   EXPECT_EQ(-1, parser_->Parse(kBuffer, std::size(kBuffer)));
@@ -939,10 +931,8 @@ TEST_F(WebMClusterParserTest, ParseInvalidZeroSizedCluster) {
 
 TEST_F(WebMClusterParserTest, ParseInvalidUnknownButActuallyZeroSizedCluster) {
   const uint8_t kBuffer[] = {
-      // clang-format off
-      0x1F, 0x43, 0xB6, 0x75, 0xFF,  // CLUSTER (size = "unknown")
-      0x1F, 0x43, 0xB6, 0x75, 0x85,  // CLUSTER (size = 5)
-      // clang-format on
+    0x1F, 0x43, 0xB6, 0x75, 0xFF,  // CLUSTER (size = "unknown")
+    0x1F, 0x43, 0xB6, 0x75, 0x85,  // CLUSTER (size = 5)
   };
 
   EXPECT_EQ(-1, parser_->Parse(kBuffer, std::size(kBuffer)));

@@ -85,6 +85,7 @@ ACTION(WriteTwoPmts) {
 
 class TsWriterTest : public ::testing::Test {
  protected:
+
   // Checks whether |actual|'s prefix matches with |prefix| and the suffix
   // matches with |suffix|. If there is padding, then padding_length specifies
   // how long the padding is between prefix and suffix.
@@ -136,7 +137,6 @@ TEST_F(TsWriterTest, ClearH264Psi) {
   };
   const int kExpectedPatPrefixSize = std::size(kExpectedPatPrefix);
   const uint8_t kExpectedPatPayload[] = {
-      // clang-format off
       0x00,  // pointer field
       0x00,
       0xB0,        // The last 2 '00' assumes that this PAT is not very long.
@@ -151,7 +151,6 @@ TEST_F(TsWriterTest, ClearH264Psi) {
       0x20,        // PMT PID.
       // CRC32.
       0xf9, 0x62, 0xf5, 0x8b,
-      // clang-format on
   };
 
   EXPECT_NO_FATAL_FAILURE(ExpectTsPacketEqual(

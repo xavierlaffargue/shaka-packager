@@ -33,7 +33,6 @@ const uint8_t kDefaultCryptByteBlock = 2;
 const uint8_t kDefaultSkipByteBlock = 8;
 
 const uint8_t kAuxInfo[] = {
-    // clang-format off
     // Sample 1: IV (no subsumples).
     0x41, 0x54, 0x65, 0x73, 0x74, 0x49, 0x76, 0x31,
     // Sample 2: IV.
@@ -44,11 +43,9 @@ const uint8_t kAuxInfo[] = {
     0x00, 0x01, 0x00, 0x00, 0x00, 0x02,
     // Sample 2: Subsample 2.
     0x00, 0x03, 0x00, 0x00, 0x00, 0x04,
-    // clang-format on
 };
 
 const uint8_t kSampleEncryptionDataWithSubsamples[] = {
-    // clang-format off
     // Sample count.
     0x00, 0x00, 0x00, 0x02,
     // Sample 1: IV.
@@ -65,22 +62,18 @@ const uint8_t kSampleEncryptionDataWithSubsamples[] = {
     0x00, 0x01, 0x00, 0x00, 0x00, 0x02,
     // Sample 2: Subsample 2.
     0x00, 0x03, 0x00, 0x00, 0x00, 0x04,
-    // clang-format on
 };
 
 const uint8_t kSampleEncryptionDataWithoutSubsamples[] = {
-    // clang-format off
     // Sample count.
     0x00, 0x00, 0x00, 0x02,
     // Sample 1: IV.
     0x41, 0x54, 0x65, 0x73, 0x74, 0x49, 0x76, 0x31,
     // Sample 2: IV.
     0x41, 0x54, 0x65, 0x73, 0x74, 0x49, 0x76, 0x32,
-    // clang-format on
 };
 
 const uint8_t kSampleEncryptionDataWithConstantIvAndSubsamples[] = {
-    // clang-format off
     // Sample count.
     0x00, 0x00, 0x00, 0x02,
     // Sample 1: Subsample count.
@@ -93,14 +86,11 @@ const uint8_t kSampleEncryptionDataWithConstantIvAndSubsamples[] = {
     0x00, 0x01, 0x00, 0x00, 0x00, 0x02,
     // Sample 2: Subsample 2.
     0x00, 0x03, 0x00, 0x00, 0x00, 0x04,
-    // clang-format on
 };
 
 const uint8_t kSampleEncryptionDataWithConstantIvWithoutSubsamples[] = {
-    // clang-format off
     // Sample count.
     0x00, 0x00, 0x00, 0x02,
-    // clang-format on
 };
 
 const char kIv1[] = {0x41, 0x54, 0x65, 0x73, 0x74, 0x49, 0x76, 0x31};

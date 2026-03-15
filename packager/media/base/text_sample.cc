@@ -29,21 +29,7 @@ TextSample::TextSample(const std::string& id,
       start_time_(start_time),
       duration_(end_time - start_time),
       settings_(settings),
-      body_(body),
-      role_(TextSampleRole::kCue) {}
-
-TextSample::TextSample(const std::string& id,
-                       int64_t start_time,
-                       int64_t end_time,
-                       const TextSettings& settings,
-                       const TextFragment& body,
-                       const TextSampleRole role)
-    : id_(id),
-      start_time_(start_time),
-      duration_(end_time - start_time),
-      settings_(settings),
-      body_(body),
-      role_(role) {}
+      body_(body) {}
 
 int64_t TextSample::EndTime() const {
   return start_time_ + duration_;

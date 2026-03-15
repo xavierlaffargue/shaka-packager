@@ -61,8 +61,6 @@ class MockAdaptationSet : public AdaptationSet {
                void(const AdaptationSet* adaptation_set));
   MOCK_METHOD1(AddTrickPlayReference,
                void(const AdaptationSet* adaptation_set));
-  MOCK_METHOD2(AddAccessibility,
-               void(const std::string& scheme, const std::string& value));
 
  private:
   // Only for constructing the super class. Not used for testing.
