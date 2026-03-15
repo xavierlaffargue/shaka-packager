@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+#include <packager/cea_caption.h>
+
 namespace shaka {
 
 /// Defines the EXT-X-PLAYLIST-TYPE in the HLS specification. For
@@ -22,24 +24,12 @@ enum class HlsPlaylistType {
   kLive,
 };
 
-// CEA caption description.
-struct CeaCaption {
-  // The display name of the caption.
-  std::string name;
-  // The language of the caption.
-  std::string language;
-  // The channel of the caption, e.g. "CC1", "SERVICE2".
-  std::string channel;
-  // True if this is the default caption.
-  bool is_default = false;
-  // True if this caption should be autoselected.
-  bool autoselect = true;
-};
-
 /// HLS related parameters.
 struct HlsParams {
   /// HLS playlist type. See HLS specification for details.
   HlsPlaylistType playlist_type = HlsPlaylistType::kVod;
+  /// Convert event stream to VOD once end of stream is detected
+  bool event_to_vod_on_end_of_stream = false;
   /// HLS master playlist output path.
   std::string master_playlist_output;
   /// The base URL for the Media Playlists and media files listed in the
