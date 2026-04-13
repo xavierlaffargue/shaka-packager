@@ -1,7 +1,7 @@
 // Copyright 2016 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file or at
+// license that can be found in the LICENSE file at
 // https://developers.google.com/open-source/licenses/bsd
 
 #include <packager/hls/base/media_playlist.h>
@@ -312,38 +312,41 @@ std::string EncryptionInfoEntry::ToString() {
 }
 
 std::string EncryptionInfoEntry::ToString(std::string tag_name) {
-  std::string tag_string;
-  if (tag_name.empty())
+  std::string result;
+  if (tag_name.empty()) {
     tag_name = "#EXT-X-KEY";
-  Tag tag(tag_name, &tag_string);
+  }
+  result += tag_name;
+  result += ":METHOD=";
 
   if (method_ == MediaPlaylist::EncryptionMethod::kSampleAes) {
-    tag.AddString("METHOD", "SAMPLE-AES");
+    result += "SAMPLE-AES";
   } else if (method_ == MediaPlaylist::EncryptionMethod::kAes128) {
-    tag.AddString("METHOD", "AES-128");
+    result += "AES-128";
   } else if (method_ == MediaPlaylist::EncryptionMethod::kSampleAesCenc) {
-    tag.AddString("METHOD", "SAMPLE-AES-CTR");
+    result += "SAMPLE-AES-CTR";
   } else {
     DCHECK(method_ == MediaPlaylist::EncryptionMethod::kNone);
-    tag.AddString("METHOD", "NONE");
+    result += "NONE";
   }
 
-  tag.AddQuotedString("URI", url_);
+  absl::StrAppendFormat(&result, ",URI=\"%s\"", url_.c_str());
 
   if (!key_id_.empty()) {
-    tag.AddString("KEYID", key_id_);
+    absl::StrAppendFormat(&result, ",KEYID=%s", key_id_.c_str());
   }
   if (!iv_.empty()) {
-    tag.AddString("IV", iv_);
+    absl::StrAppendFormat(&result, ",IV=%s", iv_.c_str());
   }
   if (!key_format_versions_.empty()) {
-    tag.AddQuotedString("KEYFORMATVERSIONS", key_format_versions_);
+    absl::StrAppendFormat(&result, ",KEYFORMATVERSIONS=\"%s\"",
+                          key_format_versions_.c_str());
   }
   if (!key_format_.empty()) {
-    tag.AddQuotedString("KEYFORMAT", key_format_);
+    absl::StrAppendFormat(&result, ",KEYFORMAT=\"%s\"", key_format_.c_str());
   }
 
-  return tag_string;
+  return result;
 }
 
 MediaPlaylist::MediaPlaylist(const HlsParams& hls_params,
