@@ -174,6 +174,41 @@ TEST_F(MediaPlaylistSingleSegmentTest, InitRange) {
   ASSERT_FILE_STREQ(kMemoryFilePath, kExpectedOutput);
 }
 
+TEST_F(MediaPlaylistMultiSegmentTest, Interstitials) {
+  HlsInterstitial interstitial;
+  interstitial.id = "ad1";
+  interstitial.start_date = "2025-10-12T14:00:00.000Z";
+  interstitial.duration = 30.0;
+  interstitial.uri = "https://example.com/ad1.m3u8";
+  hls_params_.interstitials.push_back(interstitial);
+
+  // Re-create media_playlist_ to pick up the new interstitials in constructor.
+  media_playlist_.reset(new MediaPlaylist(hls_params_, default_file_name_,
+                                          default_name_, default_group_id_));
+
+  ASSERT_TRUE(media_playlist_->SetMediaInfo(valid_video_media_info_));
+  media_playlist_->AddSegment("file1.ts", 0, 10 * kTimeScale, kZeroByteOffset,
+                              kMBytes);
+
+  const char kExpectedOutput[] =
+      "#EXTM3U\n"
+      "#EXT-X-VERSION:6\n"
+      "## Generated with https://github.com/shaka-project/shaka-packager "
+      "version test\n"
+      "#EXT-X-TARGETDURATION:10\n"
+      "#EXT-X-PLAYLIST-TYPE:VOD\n"
+      "#EXT-X-DATERANGE:ID=\"ad1\",CLASS=\"com.apple.hls.interstitial\","
+      "START-DATE=\"2025-10-12T14:00:00.000Z\",DURATION=30.000,"
+      "X-ASSET-URI=\"https://example.com/ad1.m3u8\"\n"
+      "#EXTINF:10.000,\n"
+      "file1.ts\n"
+      "#EXT-X-ENDLIST\n";
+
+  const char kMemoryFilePath[] = "memory://media.m3u8";
+  EXPECT_TRUE(media_playlist_->WriteToFile(kMemoryFilePath, false, true));
+  ASSERT_FILE_STREQ(kMemoryFilePath, kExpectedOutput);
+}
+
 TEST_F(MediaPlaylistSingleSegmentTest, InitRangeWithOffset) {
   const std::string kExpectedOutput =
       "#EXTM3U\n"

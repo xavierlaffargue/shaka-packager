@@ -34,6 +34,7 @@ class HlsEntry {
     kExtDiscontinuity,
     kExtPlacementOpportunity,
     kProgramDateTime,
+    kDateRange,
   };
   virtual ~HlsEntry();
 
@@ -347,6 +348,25 @@ class ProgramDateTimeEntry : public HlsEntry {
   ProgramDateTimeEntry& operator=(const ProgramDateTimeEntry&) = delete;
 
   const absl::Time program_time_;
+};
+
+class DateRangeEntry : public HlsEntry {
+ public:
+  DateRangeEntry(const std::string& id,
+                 const std::string& start_date,
+                 double duration,
+                 const std::string& uri);
+
+  std::string ToString() override;
+
+ private:
+  DateRangeEntry(const DateRangeEntry&) = delete;
+  DateRangeEntry& operator=(const DateRangeEntry&) = delete;
+
+  const std::string id_;
+  const std::string start_date_;
+  const double duration_;
+  const std::string uri_;
 };
 
 class EncryptionInfoEntry : public HlsEntry {

@@ -337,6 +337,47 @@ bool ParseProtectionSystems(const std::string& protection_systems_str,
   return true;
 }
 
+bool ParseInterstitials(const std::string& interstitials_str,
+                        std::vector<HlsInterstitial>* interstitials) {
+  std::vector<std::string> interstitials_list =
+      SplitAndTrimSkipEmpty(interstitials_str, ';');
+  for (const std::string& interstitial_str : interstitials_list) {
+    HlsInterstitial interstitial;
+    std::vector<KVPair> interstitial_parts =
+        SplitStringIntoKeyValuePairs(interstitial_str, '=', ',');
+    for (const auto& part : interstitial_parts) {
+      if (part.first == "id") {
+        interstitial.id = part.second;
+      } else if (part.first == "start_date") {
+        interstitial.start_date = part.second;
+      } else if (part.first == "duration") {
+        if (!absl::SimpleAtod(part.second, &interstitial.duration)) {
+          LOG(ERROR) << "Failed to parse duration in HLS interstitial: "
+                     << interstitial_str;
+          return false;
+        }
+      } else if (part.first == "uri") {
+        interstitial.uri = part.second;
+      }
+    }
+    if (interstitial.id.empty()) {
+      LOG(ERROR) << "Missing id in HLS interstitial: " << interstitial_str;
+      return false;
+    }
+    if (interstitial.start_date.empty()) {
+      LOG(ERROR) << "Missing start_date in HLS interstitial: "
+                 << interstitial_str;
+      return false;
+    }
+    if (interstitial.uri.empty()) {
+      LOG(ERROR) << "Missing uri in HLS interstitial: " << interstitial_str;
+      return false;
+    }
+    interstitials->push_back(interstitial);
+  }
+  return true;
+}
+
 bool ParseClosedCaptions(const std::string& captions_str,
                          std::vector<CeaCaption>* captions) {
   std::vector<std::string> captions_list =
@@ -587,6 +628,16 @@ std::optional<PackagingParams> GetPackagingParams() {
   hls_params.add_program_date_time = absl::GetFlag(FLAGS_add_program_date_time);
   hls_params.per_playlist_target_duration =
       absl::GetFlag(FLAGS_per_playlist_target_duration);
+
+  if (!ParseInterstitials(absl::GetFlag(FLAGS_hls_interstitial),
+                          &hls_params.interstitials)) {
+    LOG(ERROR) << "Failed to parse --hls_interstitial "
+               << absl::GetFlag(FLAGS_hls_interstitial);
+    return std::nullopt;
+  }
+  if (!hls_params.interstitials.empty()) {
+    hls_params.add_program_date_time = true;
+  }
 
   if (!ParseClosedCaptions(absl::GetFlag(FLAGS_closed_captions),
                            &packaging_params.closed_captions)) {

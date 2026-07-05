@@ -98,3 +98,13 @@ HLS options
 
     Playback of Offline HLS assets shall use EXT-X-SESSION-KEY to declare all 
     eligible content keys in the master playlist.
+
+--hls_interstitial <interstitials_list>
+
+    Semi-colon separated list of HLS interstitials. Each interstitial is a comma
+    separated list of key-value pairs. Supported keys: `id`, `start_date`,
+    `duration`, `uri`.
+
+    Example: ``id=ad1,start_date=2025-10-12T14:00:00.000Z,duration=30,uri=https://example.com/ad1.m3u8``
+
+    When this option is used, ``--add_program_date_time`` is automatically enabled.

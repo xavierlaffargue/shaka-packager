@@ -274,6 +274,27 @@ std::string ProgramDateTimeEntry::ToString() {
       cs.month(), cs.day(), cs.hour(), cs.minute(), cs.second(), ms);
 }
 
+DateRangeEntry::DateRangeEntry(const std::string& id,
+                               const std::string& start_date,
+                               double duration,
+                               const std::string& uri)
+    : HlsEntry(HlsEntry::EntryType::kDateRange),
+      id_(id),
+      start_date_(start_date),
+      duration_(duration),
+      uri_(uri) {}
+
+std::string DateRangeEntry::ToString() {
+  std::string result;
+  Tag tag("#EXT-X-DATERANGE", &result);
+  tag.AddQuotedString("ID", id_);
+  tag.AddQuotedString("CLASS", "com.apple.hls.interstitial");
+  tag.AddQuotedString("START-DATE", start_date_);
+  tag.AddFloat("DURATION", duration_);
+  tag.AddQuotedString("X-ASSET-URI", uri_);
+  return result;
+}
+
 class PlacementOpportunityEntry : public HlsEntry {
  public:
   PlacementOpportunityEntry();
@@ -359,6 +380,13 @@ MediaPlaylist::MediaPlaylist(const HlsParams& hls_params,
   // When there's a forced media_sequence_number, start with discontinuity
   if (media_sequence_number_ > 0)
     entries_.emplace_back(new DiscontinuityEntry());
+
+  for (const auto& interstitial : hls_params_.interstitials) {
+    entries_.emplace_back(new DateRangeEntry(interstitial.id,
+                                             interstitial.start_date,
+                                             interstitial.duration,
+                                             interstitial.uri));
+  }
 }
 
 MediaPlaylist::~MediaPlaylist() {}
@@ -785,12 +813,9 @@ void MediaPlaylist::SlideWindow() {
       ext_x_keys.push_back(std::move(*last));
     } else if (entry_type == HlsEntry::EntryType::kExtDiscontinuity) {
       ++discontinuity_sequence_number_;
-    } else {
-      DCHECK_EQ(static_cast<int>(entry_type),
-                static_cast<int>(HlsEntry::EntryType::kExtInf));
-
+    } else if (entry_type == HlsEntry::EntryType::kExtInf) {
       const SegmentInfoEntry& segment_info =
-          *reinterpret_cast<SegmentInfoEntry*>(last->get());
+          *reinterpret_cast<const SegmentInfoEntry*>(last->get());
       // Remove the current segment only if it falls completely out of time
       // shift buffer range.
       const bool segment_within_time_shift_buffer =
