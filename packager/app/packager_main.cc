@@ -350,27 +350,75 @@ bool ParseInterstitials(const std::string& interstitials_str,
         interstitial.id = part.second;
       } else if (part.first == "start_date") {
         interstitial.start_date = part.second;
+      } else if (part.first == "start_time") {
+        double start_time;
+        if (!absl::SimpleAtod(part.second, &start_time)) {
+          LOG(ERROR) << "Failed to parse start_time in HLS interstitial: "
+                     << interstitial_str;
+          return false;
+        }
+        interstitial.start_time = start_time;
       } else if (part.first == "duration") {
-        if (!absl::SimpleAtod(part.second, &interstitial.duration)) {
+        double duration;
+        if (!absl::SimpleAtod(part.second, &duration)) {
           LOG(ERROR) << "Failed to parse duration in HLS interstitial: "
                      << interstitial_str;
           return false;
         }
+        interstitial.duration = duration;
       } else if (part.first == "uri") {
         interstitial.uri = part.second;
+      } else if (part.first == "asset_list") {
+        interstitial.asset_list = part.second;
+      } else if (part.first == "restrict") {
+        const std::string val = absl::AsciiStrToUpper(part.second);
+        if (val != "SKIP" && val != "JUMP") {
+          LOG(ERROR) << "Invalid restrict in HLS interstitial (must be SKIP or "
+                        "JUMP): "
+                     << interstitial_str;
+          return false;
+        }
+        interstitial.restrict = val;
+      } else if (part.first == "cue") {
+        std::vector<std::string> cues = absl::StrSplit(part.second, ':');
+        for (auto& cue : cues) {
+          const std::string val =
+              absl::AsciiStrToUpper(absl::StripAsciiWhitespace(cue));
+          if (val != "PRE" && val != "POST" && val != "ONCE") {
+            LOG(ERROR) << "Invalid cue in HLS interstitial (must be PRE, POST, "
+                          "or ONCE): "
+                       << interstitial_str;
+            return false;
+          }
+          interstitial.cues.push_back(val);
+        }
       }
     }
     if (interstitial.id.empty()) {
       LOG(ERROR) << "Missing id in HLS interstitial: " << interstitial_str;
       return false;
     }
-    if (interstitial.start_date.empty()) {
-      LOG(ERROR) << "Missing start_date in HLS interstitial: "
+    if (interstitial.start_date.empty() && !interstitial.start_time.has_value()) {
+      LOG(ERROR) << "Missing start_date or start_time in HLS interstitial: "
                  << interstitial_str;
       return false;
     }
-    if (interstitial.uri.empty()) {
-      LOG(ERROR) << "Missing uri in HLS interstitial: " << interstitial_str;
+    if (!interstitial.start_date.empty() && interstitial.start_time.has_value()) {
+      LOG(ERROR) << "start_date and start_time cannot both be present in HLS "
+                    "interstitial: "
+                 << interstitial_str;
+      return false;
+    }
+    if (!interstitial.uri.empty() && !interstitial.asset_list.empty()) {
+      LOG(ERROR) << "uri and asset_list cannot both be present in HLS "
+                    "interstitial: "
+                 << interstitial_str;
+      return false;
+    }
+    if (interstitial.uri.empty() && interstitial.asset_list.empty()) {
+      LOG(ERROR) << "One of uri or asset_list must be present in HLS "
+                    "interstitial: "
+                 << interstitial_str;
       return false;
     }
     interstitials->push_back(interstitial);

@@ -61,4 +61,6 @@ ABSL_FLAG(std::string,
           "",
           "Semi-colon separated list of HLS interstitials. Each interstitial "
           "is a comma separated list of key-value pairs. Supported keys: "
-          "id, start_date, duration, uri.");
+          "id, start_date, duration, uri, asset_list, restrict, cue. "
+          "uri and asset_list are mutually exclusive. restrict can be SKIP or "
+          "JUMP. cue can be a colon-separated list of PRE, POST, ONCE.");

@@ -28,8 +28,12 @@ enum class HlsPlaylistType {
 struct HlsInterstitial {
   std::string id;
   std::string start_date;
-  double duration = 0;
+   std::optional<double> start_time;
+  std::optional<double> duration;
   std::string uri;
+  std::string asset_list;
+  std::string restrict;
+  std::vector<std::string> cues;
 };
 
 /// HLS related parameters.

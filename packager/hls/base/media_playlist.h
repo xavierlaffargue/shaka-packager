@@ -354,10 +354,16 @@ class DateRangeEntry : public HlsEntry {
  public:
   DateRangeEntry(const std::string& id,
                  const std::string& start_date,
-                 double duration,
-                 const std::string& uri);
+                 const std::optional<double>& start_time,
+                 const std::optional<double>& duration,
+                 const std::string& uri,
+                 const std::string& asset_list,
+                 const std::string& restrict,
+                 const std::vector<std::string>& cues);
 
   std::string ToString() override;
+  // This is used to set the reference wall clock time for start_time.
+  void SetReferenceTime(const absl::Time& reference_time);
 
  private:
   DateRangeEntry(const DateRangeEntry&) = delete;
@@ -365,8 +371,13 @@ class DateRangeEntry : public HlsEntry {
 
   const std::string id_;
   const std::string start_date_;
-  const double duration_;
+  const std::optional<double> start_time_;
+  const std::optional<double> duration_;
   const std::string uri_;
+  const std::string asset_list_;
+  const std::string restrict_;
+  const std::vector<std::string> cues_;
+  absl::Time reference_time_ = absl::InfinitePast();
 };
 
 class EncryptionInfoEntry : public HlsEntry {

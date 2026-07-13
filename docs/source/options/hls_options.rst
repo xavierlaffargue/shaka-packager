@@ -102,9 +102,18 @@ HLS options
 --hls_interstitial <interstitials_list>
 
     Semi-colon separated list of HLS interstitials. Each interstitial is a comma
-    separated list of key-value pairs. Supported keys: `id`, `start_date`,
-    `duration`, `uri`.
+    separated list of key-value pairs.
 
-    Example: ``id=ad1,start_date=2025-10-12T14:00:00.000Z,duration=30,uri=https://example.com/ad1.m3u8``
+    Supported keys:
+    - `id`: Unique identifier (Required).
+    - `start_date`: ISO 8601 start date (Required unless `start_time` is present).
+    - `start_time`: Offset in seconds from the beginning of the stream (Required unless `start_date` is present). `start_date` and `start_time` are mutually exclusive.
+    - `duration`: Duration in seconds (Optional).
+    - `uri`: URL for the asset (Required unless `asset_list` is present).
+    - `asset_list`: URL for the asset list (Required unless `uri` is present). `uri` and `asset_list` are mutually exclusive.
+    - `restrict`: Restrict values, can be `SKIP` or `JUMP` (Optional).
+    - `cue`: Cue values, colon separated list of `PRE`, `POST`, `ONCE` (Optional).
+
+    Example: ``id=ad1,start_date=2025-10-12T14:00:00.000Z,duration=30,uri=https://example.com/ad1.m3u8,restrict=SKIP,cue=PRE:ONCE``
 
     When this option is used, ``--add_program_date_time`` is automatically enabled.
