@@ -16,6 +16,7 @@
 #include <absl/log/log.h>
 #include <absl/strings/numbers.h>
 #include <absl/strings/str_format.h>
+#include <absl/strings/str_join.h>
 
 #include <packager/file.h>
 #include <packager/hls/base/tag.h>
@@ -274,6 +275,75 @@ std::string ProgramDateTimeEntry::ToString() {
       cs.month(), cs.day(), cs.hour(), cs.minute(), cs.second(), ms);
 }
 
+DateRangeEntry::DateRangeEntry(const std::string& id,
+                               const std::string& start_date,
+                               const std::optional<double>& start_time,
+                               const std::optional<double>& duration,
+                               const std::string& uri,
+                               const std::string& asset_list,
+                               const std::string& restrict,
+                               const std::vector<std::string>& cues)
+    : HlsEntry(HlsEntry::EntryType::kDateRange),
+      id_(id),
+      start_date_(start_date),
+      start_time_(start_time),
+      duration_(duration),
+      uri_(uri),
+      asset_list_(asset_list),
+      restrict_(restrict),
+      cues_(cues) {}
+
+std::string DateRangeEntry::ToString() {
+  std::string result;
+  Tag tag("#EXT-X-DATERANGE", &result);
+  tag.AddQuotedString("ID", id_);
+  tag.AddQuotedString("CLASS", "com.apple.hls.interstitial");
+
+  if (!start_date_.empty()) {
+    tag.AddQuotedString("START-DATE", start_date_);
+  } else if (start_time_.has_value() &&
+             reference_time_ != absl::InfinitePast()) {
+    const absl::Time start_date_time =
+        reference_time_ + absl::Seconds(start_time_.value());
+    absl::CivilSecond cs =
+        absl::ToCivilSecond(start_date_time, absl::UTCTimeZone());
+    int64_t total_ms = absl::ToUnixMillis(start_date_time);
+    int ms = static_cast<int>(total_ms % 1000);
+    if (ms < 0)
+      ms += 1000;
+    tag.AddQuotedString("START-DATE",
+                        absl::StrFormat("%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
+                                        cs.year(), cs.month(), cs.day(),
+                                        cs.hour(), cs.minute(), cs.second(),
+                                        ms));
+  } else {
+    // If no start_date and start_time cannot be calculated yet, skip or use a
+    // placeholder. Since ToString() is called during WriteToFile,
+    // reference_time_ should be set if add_program_date_time is true.
+    LOG(WARNING) << "START-DATE cannot be calculated for interstitial " << id_;
+  }
+  if (duration_.has_value()) {
+    tag.AddFloat("DURATION", duration_.value());
+  }
+  if (!uri_.empty()) {
+    tag.AddQuotedString("X-ASSET-URI", uri_);
+  }
+  if (!asset_list_.empty()) {
+    tag.AddQuotedString("X-ASSET-LIST", asset_list_);
+  }
+  if (!restrict_.empty()) {
+    tag.AddQuotedString("X-RESTRICT", restrict_);
+  }
+  if (!cues_.empty()) {
+    tag.AddQuotedString("CUE", absl::StrJoin(cues_, ","));
+  }
+  return result;
+}
+
+void DateRangeEntry::SetReferenceTime(const absl::Time& reference_time) {
+  reference_time_ = reference_time;
+}
+
 class PlacementOpportunityEntry : public HlsEntry {
  public:
   PlacementOpportunityEntry();
@@ -359,6 +429,13 @@ MediaPlaylist::MediaPlaylist(const HlsParams& hls_params,
   // When there's a forced media_sequence_number, start with discontinuity
   if (media_sequence_number_ > 0)
     entries_.emplace_back(new DiscontinuityEntry());
+
+  for (const auto& interstitial : hls_params_.interstitials) {
+    entries_.emplace_back(new DateRangeEntry(
+        interstitial.id, interstitial.start_date, interstitial.start_time,
+        interstitial.duration, interstitial.uri, interstitial.asset_list,
+        interstitial.restrict, interstitial.cues));
+  }
 }
 
 MediaPlaylist::~MediaPlaylist() {}
@@ -470,6 +547,12 @@ void MediaPlaylist::AddSegment(const std::string& file_name,
 
 void MediaPlaylist::SetReferenceTime(const absl::Time& reference_time) {
   reference_time_ = reference_time;
+  for (auto& entry : entries_) {
+    if (entry->type() == HlsEntry::EntryType::kDateRange) {
+      static_cast<DateRangeEntry*>(entry.get())->SetReferenceTime(
+          reference_time);
+    }
+  }
 }
 
 void MediaPlaylist::AddKeyFrame(int64_t timestamp,
@@ -764,14 +847,16 @@ void MediaPlaylist::SlideWindow() {
   if (current_buffer_depth_ <= hls_params_.time_shift_buffer_depth)
     return;
 
-  // Temporary list to hold the EXT-X-KEYs. For example, this allows us to
-  // remove <3> without removing <1> and <2> below (<1> and <2> are moved to the
-  // temporary list and added back later).
-  //    #EXT-X-KEY   <1>
-  //    #EXT-X-KEY   <2>
-  //    #EXTINF      <3>
-  //    #EXTINF      <4>
-  std::list<std::unique_ptr<HlsEntry>> ext_x_keys;
+  // Temporary list to hold the entries that should be preserved. For example,
+  // this allows us to remove <4> without removing <1>, <2>, or <3> below.
+  //    #EXT-X-DATERANGE    <1>
+  //    #EXT-X-KEY          <2>
+  //    #EXT-X-KEY          <3>
+  //    #EXTINF             <4>
+  //    #EXTINF             <5>
+  std::list<std::unique_ptr<HlsEntry>> preserved_interstitials;
+  std::list<std::unique_ptr<HlsEntry>> preserved_keys;
+
   // Consecutive key entries are either fully removed or not removed at all.
   // Keep track of entry types so we know if it is consecutive key entries.
   HlsEntry::EntryType prev_entry_type = HlsEntry::EntryType::kExtInf;
@@ -781,16 +866,15 @@ void MediaPlaylist::SlideWindow() {
     HlsEntry::EntryType entry_type = last->get()->type();
     if (entry_type == HlsEntry::EntryType::kExtKey) {
       if (prev_entry_type != HlsEntry::EntryType::kExtKey)
-        ext_x_keys.clear();
-      ext_x_keys.push_back(std::move(*last));
+        preserved_keys.clear();
+      preserved_keys.push_back(std::move(*last));
+    } else if (entry_type == HlsEntry::EntryType::kDateRange) {
+      preserved_interstitials.push_back(std::move(*last));
     } else if (entry_type == HlsEntry::EntryType::kExtDiscontinuity) {
       ++discontinuity_sequence_number_;
-    } else {
-      DCHECK_EQ(static_cast<int>(entry_type),
-                static_cast<int>(HlsEntry::EntryType::kExtInf));
-
+    } else if (entry_type == HlsEntry::EntryType::kExtInf) {
       const SegmentInfoEntry& segment_info =
-          *reinterpret_cast<SegmentInfoEntry*>(last->get());
+          *reinterpret_cast<const SegmentInfoEntry*>(last->get());
       // Remove the current segment only if it falls completely out of time
       // shift buffer range.
       const bool segment_within_time_shift_buffer =
@@ -805,9 +889,14 @@ void MediaPlaylist::SlideWindow() {
     prev_entry_type = entry_type;
   }
   entries_.erase(entries_.begin(), last);
-  // Add key entries back.
-  entries_.insert(entries_.begin(), std::make_move_iterator(ext_x_keys.begin()),
-                  std::make_move_iterator(ext_x_keys.end()));
+  // Add preserved entries back. Interstitials first as they are defined at
+  // the beginning.
+  entries_.insert(entries_.begin(),
+                  std::make_move_iterator(preserved_keys.begin()),
+                  std::make_move_iterator(preserved_keys.end()));
+  entries_.insert(entries_.begin(),
+                  std::make_move_iterator(preserved_interstitials.begin()),
+                  std::make_move_iterator(preserved_interstitials.end()));
 }
 
 void MediaPlaylist::RemoveOldSegment(int64_t start_time) {

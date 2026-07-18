@@ -24,6 +24,18 @@ enum class HlsPlaylistType {
   kLive,
 };
 
+/// HLS interstitial related parameters.
+struct HlsInterstitial {
+  std::string id;
+  std::string start_date;
+   std::optional<double> start_time;
+  std::optional<double> duration;
+  std::string uri;
+  std::string asset_list;
+  std::string restrict;
+  std::vector<std::string> cues;
+};
+
 /// HLS related parameters.
 struct HlsParams {
   /// HLS playlist type. See HLS specification for details.
@@ -84,6 +96,8 @@ struct HlsParams {
   bool per_playlist_target_duration = false;
   /// CEA-608 / CEA-708 captions.
   std::vector<CeaCaption> closed_captions;
+  /// HLS interstitials.
+  std::vector<HlsInterstitial> interstitials;
 };
 
 }  // namespace shaka
