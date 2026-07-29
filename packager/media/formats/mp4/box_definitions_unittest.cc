@@ -1335,6 +1335,25 @@ TEST_F(BoxDefinitionsTest, SampleEntryExtraCodecConfigs) {
   EXPECT_EQ(entry.extra_codec_configs, new_entry.extra_codec_configs);
 }
 
+TEST_F(BoxDefinitionsTest, SampleEntryMjpeg) {
+  VideoSampleEntry entry;
+  entry.format = FOURCC_mjpg;
+  entry.data_reference_index = 1;
+  entry.width = 800;
+  entry.height = 600;
+  Fill(&entry.colr);
+  Fill(&entry.pixel_aspect);
+
+  entry.Write(this->buffer_.get());
+
+  VideoSampleEntry entry_readback;
+  ASSERT_TRUE(ReadBack(&entry_readback));
+  EXPECT_EQ(FOURCC_mjpg, entry_readback.format);
+  EXPECT_EQ(1, entry_readback.data_reference_index);
+  EXPECT_EQ(800, entry_readback.width);
+  EXPECT_EQ(600, entry_readback.height);
+}
+
 TEST_F(BoxDefinitionsTest, CompactSampleSize_FieldSize16) {
   CompactSampleSize stz2;
   stz2.field_size = 16;

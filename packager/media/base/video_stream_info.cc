@@ -30,6 +30,8 @@ std::string VideoCodecToString(Codec codec) {
       return "VP8";
     case kCodecVP9:
       return "VP9";
+    case kCodecMJPEG:
+      return "MJPEG";
     default:
       NOTIMPLEMENTED() << "Unknown Video Codec: " << codec;
       return "UnknownCodec";
