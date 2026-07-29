@@ -107,6 +107,7 @@ enum FourCC : uint32_t {
   FOURCC_mfra = 0x6d667261,
   FOURCC_mha1 = 0x6d686131,
   FOURCC_mhaC = 0x6d686143,
+  FOURCC_mjpg = 0x6d6a7067,
   FOURCC_mhm1 = 0x6d686d31,
   FOURCC_minf = 0x6d696e66,
   FOURCC_moof = 0x6d6f6f66,

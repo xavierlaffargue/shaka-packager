@@ -50,6 +50,7 @@ const char kAvcCompressorName[] = "\012AVC Coding";
 const char kDolbyVisionCompressorName[] = "\013DOVI Coding";
 const char kHevcCompressorName[] = "\013HEVC Coding";
 const char kVpcCompressorName[] = "\012VPC Coding";
+const char kMjpegCompressorName[] = "\014MJPEG Coding";
 
 // According to ISO/IEC FDIS 23001-7: CENC spec, IV should be either
 // 64-bit (8-byte) or 128-bit (16-byte).
@@ -1571,6 +1572,10 @@ bool VideoSampleEntry::ReadWriteInternal(BoxBuffer* buffer) {
         compressor_name.assign(std::begin(kVpcCompressorName),
                                std::end(kVpcCompressorName));
         break;
+      case FOURCC_mjpg:
+        compressor_name.assign(std::begin(kMjpegCompressorName),
+                               std::end(kMjpegCompressorName));
+        break;
       default:
         LOG(ERROR) << FourCCToString(actual_format) << " is not supported.";
         return false;
@@ -1613,10 +1618,12 @@ bool VideoSampleEntry::ReadWriteInternal(BoxBuffer* buffer) {
     DCHECK_EQ(codec_configuration.box_type,
               GetCodecConfigurationBoxType(actual_format));
   }
-  if (codec_configuration.box_type == FOURCC_NULL)
+  if (codec_configuration.box_type == FOURCC_NULL && actual_format != FOURCC_mjpg)
     return false;
 
-  RCHECK(buffer->ReadWriteChild(&codec_configuration));
+  if (codec_configuration.box_type != FOURCC_NULL) {
+    RCHECK(buffer->ReadWriteChild(&codec_configuration));
+  }
 
   if (buffer->Reading()) {
     extra_codec_configs.clear();
@@ -1673,12 +1680,15 @@ size_t VideoSampleEntry::ComputeSizeInternal() {
   if (actual_format == FOURCC_NULL)
     return 0;
   codec_configuration.box_type = GetCodecConfigurationBoxType(actual_format);
-  DCHECK_NE(codec_configuration.box_type, FOURCC_NULL);
+  if (actual_format != FOURCC_mjpg) {
+    DCHECK_NE(codec_configuration.box_type, FOURCC_NULL);
+  }
   size_t size = HeaderSize() + sizeof(data_reference_index) + sizeof(width) +
                 sizeof(height) + sizeof(kVideoResolution) * 2 +
                 sizeof(kVideoFrameCount) + sizeof(kVideoDepth) +
                 colr.ComputeSize() + pixel_aspect.ComputeSize() +
-                sinf.ComputeSize() + codec_configuration.ComputeSize() +
+                sinf.ComputeSize() +
+                (codec_configuration.box_type != FOURCC_NULL ? codec_configuration.ComputeSize() : 0) +
                 kCompressorNameSize + 6 + 4 + 16 +
                 2;  // 6 + 4 bytes reserved, 16 + 2 bytes predefined.
   for (CodecConfiguration& codec_config : extra_codec_configs)
@@ -1701,6 +1711,8 @@ FourCC VideoSampleEntry::GetCodecConfigurationBoxType(FourCC l_format) const {
     case FOURCC_vp08:
     case FOURCC_vp09:
       return FOURCC_vpcC;
+    case FOURCC_mjpg:
+      return FOURCC_NULL;
     default:
       LOG(ERROR) << FourCCToString(l_format) << " is not supported.";
       return FOURCC_NULL;

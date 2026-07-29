@@ -88,6 +88,8 @@ Codec FourCCToCodec(FourCC fourcc) {
       return kCodecVP8;
     case FOURCC_vp09:
       return kCodecVP9;
+    case FOURCC_mjpg:
+      return kCodecMJPEG;
     case FOURCC_Opus:
       return kCodecOpus;
     case FOURCC_dtsc:
@@ -854,6 +856,10 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
             vp_config.WriteMP4(&codec_configuration_data);
           }
           codec_string = vp_config.GetCodecString(video_codec);
+          break;
+        }
+        case FOURCC_mjpg: {
+          codec_string = "mjpg";
           break;
         }
         default:

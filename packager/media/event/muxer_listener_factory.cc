@@ -68,15 +68,17 @@ std::list<std::unique_ptr<MuxerListener>> CreateHlsListenersInternal(
     name = absl::StrFormat("stream_%d", stream_index);
   }
 
-  if (playlist_name.empty()) {
+  if (playlist_name.empty() && iframe_playlist_name.empty()) {
     playlist_name = absl::StrFormat("stream_%d.m3u8", stream_index);
   }
 
   const bool kIFramesOnly = true;
   std::list<std::unique_ptr<MuxerListener>> listeners;
-  listeners.emplace_back(new HlsNotifyMuxerListener(
-      playlist_name, !kIFramesOnly, name, group_id, characteristics,
-      forced_subtitle, notifier, stream.index));
+  if (!playlist_name.empty()) {
+    listeners.emplace_back(new HlsNotifyMuxerListener(
+        playlist_name, !kIFramesOnly, name, group_id, characteristics,
+        forced_subtitle, notifier, stream.index));
+  }
   if (!iframe_playlist_name.empty()) {
     listeners.emplace_back(new HlsNotifyMuxerListener(
         iframe_playlist_name, kIFramesOnly, name, group_id,

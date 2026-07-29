@@ -69,6 +69,8 @@ FourCC CodecToFourCC(Codec codec, H26xStreamFormat h26x_stream_format) {
       return FOURCC_vp08;
     case kCodecVP9:
       return FOURCC_vp09;
+    case kCodecMJPEG:
+      return FOURCC_mjpg;
     case kCodecAAC:
     case kCodecMP3:
       return FOURCC_mp4a;

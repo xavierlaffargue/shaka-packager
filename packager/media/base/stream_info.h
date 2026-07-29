@@ -36,6 +36,7 @@ enum Codec {
   kCodecH265DolbyVision,
   kCodecVP8,
   kCodecVP9,
+  kCodecMJPEG,
   kCodecVideoMaxPlusOne,
 
   kCodecAudio = 200,
